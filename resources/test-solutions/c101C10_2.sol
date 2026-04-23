@@ -1,0 +1,11 @@
+# some solution for c101C10_1.sol
+123.45
+D0, C98, D0
+D0, C78, D0
+D0, C4, D0
+D0, C95, D0
+D0, C100, D0
+D0, C54, D0
+D0, C27, D0
+D0, C89, D0
+D0, C96, D0
