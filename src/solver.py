@@ -1,20 +1,7 @@
 import math  # provides mathematical functions (used here for distance calculation)
 
 
-# ----------------------------
-# Data structures
-# ----------------------------
 
-class Node:
-    def __init__(self, idx, x, y, demand=0, ready=0, due=9999, service=0, is_station=False):
-        self.idx = idx              # unique node ID (0 = depot, others = customers/stations)
-        self.x = x                  # x-coordinate
-        self.y = y                  # y-coordinate
-        self.demand = demand        # customer demand (0 for depot/stations)
-        self.ready = ready          # earliest service start time (e_i)
-        self.due = due              # latest service start time (l_i)
-        self.service = service      # service duration at node (s_i)
-        self.is_station = is_station  # True if node is a charging station
 
 
 # ----------------------------
@@ -25,7 +12,10 @@ def distance(a, b):
     # compute Euclidean distance between two nodes
     return math.hypot(a.x - b.x, a.y - b.y)
 
-
+#------------------------------------------
+#FIXME          travle distance update               
+# ! the travel time should be updates
+#------------------------------------------
 def travel_time(a, b):
     # travel time between nodes (currently equal to distance)
     return distance(a, b)
@@ -254,14 +244,14 @@ def local_search(routes, Q, C, r, g):
 
 def format_node(node):
     # format depot
-    if node.idx == 0:
+    if node.id == 0:
         return "D0"
     # format charging station
     elif node.is_station:
-        return f"S{node.idx - 99}"  # e.g. 100 -> S1
+        return f"S{node.id - 99}"  # e.g. 100 -> S1
     # format customer
     else:
-        return f"C{node.idx}"
+        return f"C{node.id}"
 
 
 def print_solution(routes):
