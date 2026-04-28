@@ -1,49 +1,58 @@
+from dataclasses import dataclass
+
+
 # ----------------------------
 # Data structures
 # ----------------------------
+@dataclass()
 class Node:
-    def __init__(
-        self,
-        id: str,
-        x: float,
-        y: float,
-        demand: float,
-        ready: float,
-        due: float,
-        service: float,
-        is_station: bool,
-    ):
-        self.id = id  # unique node ID
-        self.x = x  # x-coordinate
-        self.y = y  # y-coordinate
-        self.demand = demand  # customer demand (0 for depot/stations)
-        self.ready = ready  # earliest service start time (e_i)
-        self.due = due  # latest service start time (l_i)
-        self.service = service  # service duration at node (s_i)
-        self.is_station = is_station  # True if node is a charging station
-
+    id: str
+    type : str
+    x: float
+    y: float
+    demand: float
+    ready: float
+    due: float
+    service: float
+    
     @classmethod
     def empty(cls):
-        pass
+        return cls("", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+@dataclass
+class Instance:
+    depot: Node
+    customers: list[Node]
+    stations: list[Node]
+    Q: float   # battery capacity
+    C: float   # load capacity
+    r: float   # energy consumption rate
+    g: float   # inverse refueling rate
+    v: float   # velocity
 
 
+#==============================Extract Instances==============================
 def get_instances(path: str):
     #------------------------------------------------------------------------
     #                              Function Description                              
     '''
-    This function takes the path to the instances txt file and return the data
-    from type Node  
+    Return the data from an instances txt file parsed into:
+    • depot \n
+    • list of customers \n
+    • list of charging stations \n
+    • Q = Vehicle fuel tank capacity \n
+    • C = Vehicle load capacity \n
+    • r = fuel consumption rate \n 
+    • g = inverse refueling rate \n
+    • v = average Velocity \n
+
     '''
     #------------------------------------------------------------------------
     with open(path) as instances:
-        customers = list()
-        stations = list()
-        depot = Node.empty()
-        Q = float()
-        C = float()
-        r = float()
-        g = float()
-        v = float()
+        customers:list[Node] = list()
+        stations:list[Node] = list()
+        depot:Node  = Node.empty()
+        Q = C = r = g = v = float()
         for line in instances.readlines():
             data = line.split()
 
@@ -55,38 +64,38 @@ def get_instances(path: str):
                 case "d":
                     depot = Node(
                         data[0],
+                        data[1],
                         float(data[2]),
                         float(data[3]),
                         float(data[4]),
                         float(data[5]),
                         float(data[6]),
                         float(data[7]),
-                        False,
                     )
                 case "f":
                     stations.append(
                         Node(
                             data[0],
+                            data[1],
                             float(data[2]),
                             float(data[3]),
                             float(data[4]),
                             float(data[5]),
                             float(data[6]),
                             float(data[7]),
-                            True,
                         )
                     )
                 case "c":
                     customers.append(
                         Node(
                             data[0],
+                            data[1],
                             float(data[2]),
                             float(data[3]),
                             float(data[4]),
                             float(data[5]),
                             float(data[6]),
                             float(data[7]),
-                            True,
                         )
                     )
                 case "Vehicle":
@@ -101,4 +110,4 @@ def get_instances(path: str):
                 case "average":
                     v = float(data[3].strip("/"))
 
-    return depot, customers, stations, Q, C, r, g, v
+    return Instance(depot, customers, stations, Q, C, r, g, v)
