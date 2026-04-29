@@ -33,18 +33,19 @@ def sweep_angle(depot: Node, node: Node, ref_angle: float):
 
 
 def update_battery(a:Node, b:Node, r:float, current_battry:float):
+    """Update the battery charge after passing a distance"""
     return current_battry - consumed_energy(a,b,r)
 
-def find_best_station(cur_customer: Node, nxt_customer: Node, inst: Instance, current_battery:float):
+def find_best_station(cur_customer: Node, next_customer: Node, inst: Instance, current_battery:float):
     """Find the closest charging station between the current and next customer"""
     best, best_detour = None, float("inf")
     for s in inst.stations:
-        if inst.r * dist(cur_customer, s) <= current_battery:  # can reach s
-            if inst.r * dist(s, nxt_customer) <= inst.Q:  # can reach v after full charge
+        if inst.r * dist(cur_customer, s) <= current_battery:  # can reach the station
+            if inst.r * dist(s, next_customer) <= inst.Q:  # can reach the next customer after full charge
                 detour = (
                     dist(cur_customer, s)
-                    + dist(s, nxt_customer)
-                    - dist(cur_customer, nxt_customer)
+                    + dist(s, next_customer)
+                    - dist(cur_customer, next_customer)
                 )
                 if detour < best_detour:
                     best_detour, best = detour, s

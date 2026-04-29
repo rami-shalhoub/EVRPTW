@@ -5,7 +5,6 @@ from .instances import Instance, Node
 def is_feasible(route: list[Node], inst: Instance) -> bool:
     """
     Simulate a route and check all EVRPTW constraints.
-    route must start and end with the depot: [depot, ..., depot]
     Returns True if feasible, False otherwise.
     """
     battery = inst.Q  # start fully charged
@@ -16,14 +15,13 @@ def is_feasible(route: list[Node], inst: Instance) -> bool:
         current:Node = route[i]
         next:Node = route[i + 1]
 
-        #===============Travel along arc current → next ==============
+        #===============Battery charge from current node → next node ==============
         battery -= consumed_energy(current, next, inst.r)
-        time += travel_time(current, next, inst.v)
-
         if battery < 0:
             return False  # ran out of battery mid-arc
 
         #===============Arrive at next: time window==============
+        time += travel_time(current, next, inst.v)
         start = max(time, next.ready)  # wait if arrived early
 
         if start > next.due:

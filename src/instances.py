@@ -36,7 +36,7 @@ def get_instances(path: str):
     #------------------------------------------------------------------------
     #                              Function Description                              
     '''
-    Return the data from an instances txt file parsed into:
+    Return the data from an instances txt file parsed into: \n
     • depot \n
     • list of customers \n
     • list of charging stations \n
