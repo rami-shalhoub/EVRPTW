@@ -50,3 +50,17 @@ def find_best_station(cur_customer: Node, next_customer: Node, inst: Instance, c
                 if detour < best_detour:
                     best_detour, best = detour, s
     return best
+
+def route_cost(route: list[Node]) -> float:
+    """sum of distances along a route"""
+    return sum(dist(route[i], route[i + 1]) for i in range(len(route) - 1))
+
+def delta (new_cost: float, old_cost: float):
+    return new_cost - old_cost
+
+def print_routes(routes:list[list[Node]]):
+    for route in routes:
+        print("[", end='')
+        for r in route:
+            print(r.id, end=',')
+        print("]")
