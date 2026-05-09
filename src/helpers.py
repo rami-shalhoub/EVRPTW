@@ -1,5 +1,5 @@
 import math
-
+import os
 from .instances import Instance, Node
 
 
@@ -55,12 +55,28 @@ def route_cost(route: list[Node]) -> float:
     """sum of distances along a route"""
     return sum(dist(route[i], route[i + 1]) for i in range(len(route) - 1))
 
+def total_cost(routes:list[list[Node]]):
+    cost:float = 0.0
+    for route in routes:
+        cost += route_cost(route)
+    return round(cost, 3)
+    
 def delta (new_cost: float, old_cost: float):
     return new_cost - old_cost
 
-def print_routes(routes:list[list[Node]]):
+def print_routes(routes:list[list[Node]], msg: str = ""):
+    print(msg)
+    print(f"total cost: {total_cost(routes)}")
     for route in routes:
-        print("[", end='')
-        for r in route:
-            print(r.id, end=',')
-        print("]")
+       print(", ".join(node.id for node in route))
+  
+def export(routes: list[list[Node]], name: str):
+    # Ensure the directory exists
+    file_path = f"./solution/{name}Solution.txt"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    
+    with open(file_path, 'w') as file:
+        file.write(f"# solution for {name}\n")
+        file.write(f"{total_cost(routes)}\n")
+        for route in routes:
+            file.write(", ".join(node.id for node in route) + "\n")

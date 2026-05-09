@@ -36,19 +36,17 @@ def route_constructor(unvisited: list[Node], inst: Instance):
 
     # ----------------------------------------------------
     #                 Return to depot
-    # check if rout can end with the depot, if not
-    # exit the function ad the current solution is not possible
+    # check if rout can end with the depot
     # ----------------------------------------------------
     if is_feasible(route + [inst.depot], inst):
         route.append(inst.depot)
-        # remove visited customers
-        for r in route:
-            if unvisited.count(r) > 0:
-                unvisited.pop(unvisited.index(r))
-
-        return route
-    else:
-        return route 
+        
+    # remove visited customers
+    for r in route:
+        if unvisited.count(r) > 0:
+            unvisited.pop(unvisited.index(r))
+    
+    return route
 
 def shuffle (unvisited: list[Node], inst:Instance):
     """sort customers by polar angle using a random reference point (Sweep heuristic)"""
@@ -56,20 +54,35 @@ def shuffle (unvisited: list[Node], inst:Instance):
     unvisited.sort(key=lambda n: sweep_angle(inst.depot, n, ref_angle))
     return unvisited
 
-def greedy_construction(inst: Instance):
+def greedy_construction(inst: Instance, iteration: int):
     """
     Construct a solution using ***Sweeping algorithm*** and ***Greedy constructor*** \n
-    The solution is a list of routes \n
-    
+    The solution is a list of routes
     """
     routes: list[list[Node]] = list()
+    failed_customers: list[Node] = list()
     unvisited:list[Node] = shuffle(inst.customers[:], inst)
     print(f"total customers {len(unvisited)}")
     while len(unvisited) != 0:
         route = route_constructor(unvisited, inst)
-        if route is None:
+        if route[-1].type != 'd':
+            failed_customers += [r for r in route if r.type == 'c'] # remove the stations and the depot
+        else:
+            routes.append(route)      
+        
+        if len(unvisited) == 0 and len(failed_customers) > 0:
+            print(f"{len(failed_customers)} customers could not be served")
+            # print(", ".join(c.id for c in failed_customers))
+            
+            if iteration == 0:
+                print("FAILED")
+                return
+                
+            iteration -= 1
+            unvisited = failed_customers[:]
             unvisited = shuffle(unvisited, inst)
-            continue
-        print(f"remaining customers {len(unvisited)}")
-        routes.append(route)
+                        
+            failed_customers.clear()
+
+    
     return routes
