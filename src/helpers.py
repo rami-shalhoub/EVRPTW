@@ -36,20 +36,22 @@ def update_battery(a:Node, b:Node, r:float, current_battry:float):
     """Update the battery charge after passing a distance"""
     return current_battry - consumed_energy(a,b,r)
 
-def find_best_station(cur_customer: Node, next_customer: Node, inst: Instance, current_battery:float):
+def find_best_stations(cur_customer: Node, next_customer: Node, inst: Instance, current_battery:float, iterations: int):
     """Find the closest charging station between the current and next customer"""
-    best, best_detour = None, float("inf")
-    for s in inst.stations:
-        if inst.r * dist(cur_customer, s) <= current_battery:  # can reach the station
-            if inst.r * dist(s, next_customer) <= inst.Q:  # can reach the next customer after full charge
-                detour = (
-                    dist(cur_customer, s)
-                    + dist(s, next_customer)
-                    - dist(cur_customer, next_customer)
-                )
+    best_stations: list[Node] = list()
+    stations = inst.stations
+    for _ in range(iterations):
+        best, best_detour = None, float("inf")
+        for s in stations:
+            # can reach the station and the next customer after full charge
+            if (inst.r * dist(cur_customer, s) <= current_battery 
+                and  inst.r * dist(s, next_customer) <= inst.Q):  
+                detour = dist(cur_customer, s) + dist(s, next_customer) - dist(cur_customer, next_customer)
                 if detour < best_detour:
                     best_detour, best = detour, s
-    return best
+        if best is not None:
+            best_stations.append(stations.pop(stations.index(best)))
+    return best_stations
 
 def route_cost(route: list[Node]) -> float:
     """sum of distances along a route"""
