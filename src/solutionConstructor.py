@@ -1,8 +1,5 @@
-import math
-import random
-
 from .feasibility import is_feasible
-from .helpers import dist, find_best_stations, print_routes, route_cost, sweep_angle, total_cost, update_battery
+from .helpers import find_best_stations, route_cost, shuffle, sweep_sort, total_cost, update_battery
 from .instances import Instance, Node
 
 
@@ -58,19 +55,6 @@ def route_constructor(unvisited: list[Node], inst: Instance, try_stations: int):
             unvisited.pop(unvisited.index(r))
     
     return route
-
-def shuffle (unvisited: list[Node], inst:Instance):
-    """(Sweep heuristic) sort customers by polar angle using a random reference point"""
-    ref_angle: float = random.uniform(0, 2 * math.pi) 
-    unvisited.sort(key=lambda n: sweep_angle(inst.depot, n, ref_angle))
-    return unvisited
-
-def order_customers_by_distance(unvisited: list[Node]) -> list[Node]:
-    """Order customers by distance from the first customer"""
-    if not unvisited:
-        return []
-    return [unvisited[0]] + sorted(unvisited[1:], key=lambda c: dist(unvisited[0], c))
-
 def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, try_stations: int = 3):
     """
     Construct a solution using ***Sweeping algorithm*** and ***Greedy constructor*** \n
@@ -92,7 +76,7 @@ def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, tr
     for t in range(trys):
         routes: list[list[Node]] = list()
         failed_customers: list[Node] = list()
-        unvisited:list[Node] = shuffle(inst.customers[:], inst)
+        unvisited:list[Node] = sweep_sort(inst.customers[:], inst)
         i = iterations
         while len(unvisited) != 0:
             route = route_constructor(unvisited, inst, try_stations)
@@ -100,7 +84,7 @@ def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, tr
                 failed_customers += [r for r in route if r.type == 'c'] # remove the stations and the depot
             else:
                 routes.append(route)      
-
+            shuffle(unvisited, inst)
             #--------------------------------------------------------------
             #INFO               Failed customers iterations                         
             # * after going through the whole unvisited customers, if any 
@@ -125,24 +109,9 @@ def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, tr
                     
                 i -= 1
                 unvisited = failed_customers[:]
-                # luck= random.randint(1,4)
-                luck= random.randint(1,4)
-                match luck:
-                    case 1:
-                        unvisited = shuffle(unvisited, inst)
-                    case 2:
-                        unvisited = shuffle(unvisited, inst)
-                        unvisited.reverse()
-                    case 3: 
-                        unvisited = shuffle(unvisited, inst)
-                        temp1, temp2 = unvisited[0:int(len(unvisited)/2)], unvisited[int(len(unvisited)/2):]
-                        unvisited = temp2 + temp1
-                    case 4:
-                        unvisited = shuffle(unvisited, inst)
-                        unvisited = order_customers_by_distance(unvisited)
-                        
-                            
+                shuffle(unvisited, inst)
                 failed_customers.clear()
+
         cost = total_cost(routes)
         if cost < best_cost:
             best_cost, best_routes = cost, routes
