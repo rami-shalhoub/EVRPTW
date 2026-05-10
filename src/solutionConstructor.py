@@ -100,11 +100,11 @@ def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, tr
                     # * [depot, customer, depot] route
                     #------------------------------------------
                     if len(failed_customers) != 0 :
-                        print(f"last resort, {len(failed_customers)} failed")
+                        # print(f"last resort, {len(failed_customers)} failed")
                         for f in failed_customers:
                             routes.append([inst.depot] + [f] + [inst.depot])
                             
-                    print(f"total cost for iteration {t+1}: {total_cost(routes)}")
+                    # print(f"total cost for iteration {t+1}: {total_cost(routes)}")
                     break
                     
                 i -= 1
