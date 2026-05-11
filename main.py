@@ -1,4 +1,4 @@
-from src.helpers import export, total_cost
+from src.helpers import export, total_cost, route_cost, format_number
 from src.instances import get_instances
 from src.localSearch import local_search
 from src.solutionConstructor import greedy_construction
@@ -9,12 +9,9 @@ import csv
 from statistics import mean
 
 
-OUTPUT_FILE = "results_3.csv"
-
-
 if __name__ == "__main__":
     # import the data from the instances file
-    inst = get_instances("./resources/instances/c103_21.txt")
+    inst = get_instances("./resources/instances/rc203_21.txt")
 
     # ====================================================
     # ===                 Task 1                       ===
@@ -25,3 +22,9 @@ if __name__ == "__main__":
         routes = local_search(routes, inst)
         print(f"routes improved with local search cost: {total_cost(routes)}")
         export(routes,"c103_21")
+
+    #Output in CSV file
+    with open('results_3.csv', mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file, delimiter=";")
+        writer.writerow(["", "best", "avg", "avg.time(s)"])
+        writer.writerow(['rc203_21', format_number(total_cost(routes)), format_number(total_cost(routes)), format_number(time.time())]) 

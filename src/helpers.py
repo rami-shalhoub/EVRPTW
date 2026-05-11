@@ -110,3 +110,6 @@ def shuffle (customers: list[Node], inst:Instance):
         case 4:
             customers = sweep_sort(customers, inst)
             customers = order_customers_by_distance(customers)
+            
+def format_number(num):
+    return f"{num:.6f}".replace(".", ",")
