@@ -1,3 +1,4 @@
+import csv
 import math
 import os
 import random
@@ -40,8 +41,8 @@ def print_routes(routes:list[list[Node]], msg: str = ""):
     print(f"total cost: {total_cost(routes)}")
     for route in routes:
        print(", ".join(node.id for node in route))
-  
-def export(routes: list[list[Node]], name: str):
+
+def export_to_txt(routes: list[list[Node]], name: str):
     # Ensure the directory exists
     file_path = f"./solution/{name}Solution.txt"
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -51,8 +52,16 @@ def export(routes: list[list[Node]], name: str):
         file.write(f"{total_cost(routes)}\n")
         for route in routes:
             file.write(", ".join(node.id for node in route) + "\n")
+            
+def export_to_csv(results:list[tuple[str, float, float, float]], file_name: str ):
+    with open(f'{file_name}.csv', mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file, delimiter=";")
+        writer.writerow(["", "best", "avg", "avg.time(s)"])
+
+        for r in results:
+            writer.writerow([r[0], format_number(r[1]), format_number(r[2]), format_number(r[3])]) 
 #========================================================================
-#===                Greedy algorithm herlper functions                ===
+#===                Greedy algorithm helper functions                ===
 #========================================================================
 def sweep_angle(depot: Node, node: Node, ref_angle: float):
     """
@@ -111,5 +120,5 @@ def shuffle (customers: list[Node], inst:Instance):
             customers = sweep_sort(customers, inst)
             customers = order_customers_by_distance(customers)
             
-def format_number(num):
-    return f"{num:.6f}".replace(".", ",")
+def format_number(num, digit = 2):
+    return f"{num:.{digit}f}".replace(".", ",")
