@@ -42,14 +42,14 @@ def print_routes(routes:list[list[Node]], msg: str = ""):
     for route in routes:
        print(", ".join(node.id for node in route))
 
-def export_to_txt(routes: list[list[Node]], name: str):
+def export_to_txt(routes: list[list[Node]], name: str, total_cost:float):
     # Ensure the directory exists
-    file_path = f"./solution/{name}Solution.txt"
+    file_path = f"./solution/{name}_solution.txt"
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     
     with open(file_path, 'w') as file:
         file.write(f"# solution for {name}\n")
-        file.write(f"{total_cost(routes)}\n")
+        file.write(f"{total_cost}\n")
         for route in routes:
             file.write(", ".join(node.id for node in route) + "\n")
             

@@ -29,7 +29,7 @@ def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
                         new_route_a = routes[i][:ci] + routes[i][ci + 1 :]
                         new_route_b = routes[j][:cj] + [customer] + routes[j][cj:]
 
-                        if not is_feasible(new_route_a, inst) or not is_feasible(new_route_b, inst):
+                        if not is_feasible(inst,new_route_a) or not is_feasible(inst, new_route_b):
                             continue
 
                         old_cost = route_cost(routes[i]) + route_cost(routes[j])

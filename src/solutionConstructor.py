@@ -19,7 +19,7 @@ def route_constructor(unvisited: list[Node], inst: Instance, try_stations: int):
         # * check if it is feasible to insert a customer, otherwise
         # * check if it is feasible to go to a charging station before
         # --------------------------------------------------------------
-        if is_feasible(route + [unvisited[i]], inst):
+        if is_feasible(inst, route + [unvisited[i]]):
             battery = update_battery(route[-1], unvisited[i], inst.r, battery)
             route.append(unvisited[i])  # add the customer to the rout
         else:
@@ -32,7 +32,7 @@ def route_constructor(unvisited: list[Node], inst: Instance, try_stations: int):
             if len(stations) > 0:
                 best, best_cost = None, float("inf")
                 for s in stations:
-                    if is_feasible(route + [s] + [unvisited[i]], inst):
+                    if is_feasible(inst, route + [s] + [unvisited[i]]):
                         cost = route_cost(route + [s] + [unvisited[i]])
                         if cost < best_cost:
                             best_cost, best = cost, s
@@ -46,7 +46,7 @@ def route_constructor(unvisited: list[Node], inst: Instance, try_stations: int):
     #INFO             Return to depot
     # * check if rout can end with the depot
     # ----------------------------------------------------
-    if is_feasible(route + [inst.depot], inst):
+    if is_feasible(inst, route + [inst.depot]):
         route.append(inst.depot)
         
     # remove visited customers
