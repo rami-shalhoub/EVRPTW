@@ -4,7 +4,6 @@ from statistics import mean
 
 import click
 
-from src.feasibility import is_feasible
 from src.helpers import export_to_csv, export_to_txt, total_cost
 from src.instances import get_instances
 from src.localSearch import local_search
@@ -56,7 +55,7 @@ def Task1(iter: int, run: int, station: int):
         routes = greedy_construction(inst, iter, run, station)
 
         if routes is not None:
-            routes = local_search(routes, inst)
+            routes = local_search(routes, inst, run)
             # cost = total_cost(routes)
             final_cost = total_cost(routes)
             final_costs.append(final_cost)
@@ -82,4 +81,4 @@ def Task1(iter: int, run: int, station: int):
 if __name__ == "__main__":
     results = Task1()
     # Output in CSV file
-    export_to_csv(results, "results_10")
+    # export_to_csv(results, "results_10")
