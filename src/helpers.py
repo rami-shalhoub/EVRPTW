@@ -104,21 +104,21 @@ def order_customers_by_distance(unvisited: list[Node]) -> list[Node]:
         return []
     return [unvisited[0]] + sorted(unvisited[1:], key=lambda c: dist(unvisited[0], c))
     
-def shuffle (customers: list[Node], inst:Instance):
-    luck= random.randint(1,4)
+def shuffle(customers: list[Node], inst: Instance):
+    luck = random.randint(1, 4)
     match luck:
         case 1:
             customers = sweep_sort(customers, inst)
         case 2:
             customers = sweep_sort(customers, inst)
             customers.reverse()
-        case 3: 
+        case 3:
             customers = sweep_sort(customers, inst)
-            temp1, temp2 = customers[0:int(len(customers)/2)], customers[int(len(customers)/2):]
-            customers = temp2 + temp1
+            mid = len(customers) // 2
+            customers[:] = customers[mid:] + customers[:mid]
         case 4:
             customers = sweep_sort(customers, inst)
-            customers = order_customers_by_distance(customers)
-            
+            customers[:] = order_customers_by_distance(customers)
+
 def format_number(num, digit = 2):
     return f"{num:.{digit}f}".replace(".", ",")
