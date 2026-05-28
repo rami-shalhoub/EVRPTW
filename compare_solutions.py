@@ -12,7 +12,7 @@ for f in instance_files:
     name = f.replace("_g_solution.txt", "")
 
     greedy_file = f"{name}_g_solution.txt"
-    ls1_file = f"{name}_ls_1_solution.txt"
+    ls1_file = f"{name}_ls1_solution.txt"
     ls2_file = f"{name}_ls2_solution.txt"
 
     if not all(os.path.exists(solution_folder + sf) for sf in [greedy_file, ls1_file, ls2_file]):

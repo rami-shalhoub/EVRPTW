@@ -66,7 +66,7 @@ def Task1(iter: int, run: int, station: int):
             routes1 = deepcopy(routes)
             routes1= ls1(routes, inst)
             cost = total_cost(routes1)
-            export_to_txt(routes1, instance_name+'_ls_1', cost)
+            export_to_txt(routes1, instance_name+'_ls1', cost)
 
             # export local search 2
             routes2 = deepcopy(routes)
@@ -81,6 +81,6 @@ def Task1(iter: int, run: int, station: int):
 
 
 if __name__ == "__main__":
-    results = Task1()
+    results = Task1(standalone_mode=False)
     # Output in CSV file
     # export_to_csv(results, "results_10")
