@@ -4,7 +4,6 @@ from statistics import mean
 
 import click
 
-from src.feasibility import is_feasible
 from src.helpers import export_to_csv, export_to_txt, total_cost
 from src.instances import get_instances
 from src.localSearch import local_search
@@ -74,12 +73,12 @@ def Task1(iter: int, run: int, station: int):
             results.append((instance_name, best_final, avg_final, avg_time))
 
             # export solution
-            export_to_txt(routes, instance_name, best_final)
+            export_to_txt(routes, instance_name, final_cost)
 
     return results
 
 
 if __name__ == "__main__":
-    results = Task1()
+    results = Task1(standalone_mode=False)
     # Output in CSV file
     export_to_csv(results, "results_10")

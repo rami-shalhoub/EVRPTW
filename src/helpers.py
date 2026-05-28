@@ -2,6 +2,7 @@ import csv
 import math
 import os
 import random
+import pandas as pd
 from .instances import Instance, Node
 
 #========================================================================
@@ -21,6 +22,17 @@ def consumed_energy(a: Node, b: Node, r: float):
     """Battery consumed travelling from a to b"""
     return r * dist(a, b)
 
+def update_battery(a:Node, b:Node, r:float, current_battry:float):
+    """Update the battery charge after passing a distance"""
+    return current_battry - consumed_energy(a,b,r)
+
+def calculate_battery_consumption (route:list[Node], inst:Instance):
+    battery = inst.Q
+    for i in range(len(route) - 1):
+        battery -= consumed_energy(route[i], route[i+1], inst.r)
+        if route[i+1].type == "f":
+            battery = inst.Q
+    return battery
 
 def charge_time(current_battery: float, Q: float, g: float):
     """Time to recharge from current_battery to full Q"""
@@ -54,12 +66,9 @@ def export_to_txt(routes: list[list[Node]], name: str, total_cost:float):
             file.write(", ".join(node.id for node in route) + "\n")
             
 def export_to_csv(results:list[tuple[str, float, float, float]], file_name: str ):
-    with open(f'{file_name}.csv', mode="w", newline="", encoding="utf-8") as file:
-        writer = csv.writer(file, delimiter=";")
-        writer.writerow(["", "best", "avg", "avg.time(s)"])
-
-        for r in results:
-            writer.writerow([r[0], format_number(r[1]), format_number(r[2]), format_number(r[3])]) 
+    data = pd.DataFrame(results, columns = ["instance", "best", "avg", "avg.time(s)"])
+    data.to_csv(f"{file_name}.csv", index = False, float_format="%.2f")
+   
 #========================================================================
 #===                Greedy algorithm helper functions                ===
 #========================================================================
@@ -71,14 +80,10 @@ def sweep_angle(depot: Node, node: Node, ref_angle: float):
     cust_angle = math.atan2(node.y - depot.y, node.x - depot.x)
     return (cust_angle - ref_angle) % (2 * math.pi)
 
-def update_battery(a:Node, b:Node, r:float, current_battry:float):
-    """Update the battery charge after passing a distance"""
-    return current_battry - consumed_energy(a,b,r)
-
 def find_best_stations(cur_customer: Node, next_customer: Node, inst: Instance, current_battery:float, iterations: int):
     """Find the closest charging station between the current and next customer"""
     best_stations: list[Node] = list()
-    stations = inst.stations
+    stations = inst.stations[:]
     for _ in range(iterations):
         best, best_detour = None, float("inf")
         for s in stations:
@@ -119,6 +124,3 @@ def shuffle (customers: list[Node], inst:Instance):
         case 4:
             customers = sweep_sort(customers, inst)
             customers = order_customers_by_distance(customers)
-            
-def format_number(num, digit = 2):
-    return f"{num:.{digit}f}".replace(".", ",")

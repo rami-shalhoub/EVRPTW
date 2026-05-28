@@ -1,5 +1,7 @@
-from .feasibility import is_feasible
-from .helpers import find_best_stations, route_cost, shuffle, sweep_sort, total_cost, update_battery
+from copy import deepcopy
+
+from .feasibility import BatteryError, InfeasibilityError, is_feasible
+from .helpers import find_best_stations, route_cost, shuffle, sweep_sort, total_cost, calculate_battery_consumption
 from .instances import Instance, Node
 
 
@@ -12,49 +14,64 @@ def route_constructor(unvisited: list[Node], inst: Instance, try_stations: int):
     :param try_stations: number of charging stations to consider
     """
     route: list[Node] = [inst.depot]  # starts the from the depot
-    battery = inst.Q  # start with a full battery
     for i in range(len(unvisited)):
         # --------------------------------------------------------------
         #INFO                     Insert a customer
         # * check if it is feasible to insert a customer, otherwise
         # * check if it is feasible to go to a charging station before
         # --------------------------------------------------------------
-        if is_feasible(inst, route + [unvisited[i]]):
-            battery = update_battery(route[-1], unvisited[i], inst.r, battery)
-            route.append(unvisited[i])  # add the customer to the rout
-        else:
+        try:
+            is_feasible(inst, route + [unvisited[i]])
+        except BatteryError:
             #------------------------------------------
             #INFO           Station iteration               
             # * to increase the chances of finding a station
             # * we try the best n stations until one fits
+            # * otherwise we take the fist best station
             #------------------------------------------
+            battery = calculate_battery_consumption(route, inst)
             stations = find_best_stations(route[-1], unvisited[i], inst, battery, try_stations)
             if len(stations) > 0:
-                best, best_cost = None, float("inf")
+                best, best_cost = stations[0], float("inf")
+                temp_route : list[Node] = []
                 for s in stations:
-                    if is_feasible(inst, route + [s] + [unvisited[i]]):
-                        cost = route_cost(route + [s] + [unvisited[i]])
-                        if cost < best_cost:
-                            best_cost, best = cost, s
-                        
-                if best is not None:
-                        battery = update_battery( best, unvisited[i], inst.r, inst.Q)  # the battery consumption from the station to the customer
-                        route.append(best)
-                        route.append(unvisited[i])
+                    temp_route = route + [s] + [unvisited[i]]
+                    cost = route_cost(temp_route)
+                    if cost < best_cost:
+                        best_cost, best = cost, s
+                try:
+                    is_feasible(inst, route + [best] + [unvisited[i]])
+                except InfeasibilityError:
+                    pass
+                    # print(f"station {best.id} before {unvisited[i].id} infeasible: {iE}")
+                else:
+                    route.append(best)
+                    route.append(unvisited[i])
+                
+        except InfeasibilityError:
+            continue  # skip this move entirely
+        else:
+            route.append(unvisited[i]) # add the customer to the rout
+        
 
     # ----------------------------------------------------
     #INFO             Return to depot
     # * check if rout can end with the depot
     # ----------------------------------------------------
-    if is_feasible(inst, route + [inst.depot]):
+    try:
+        is_feasible(inst, route + [inst.depot])
+    except InfeasibilityError:
+        pass
+    else:
         route.append(inst.depot)
-        
-    # remove visited customers
-    for r in route:
-        if unvisited.count(r) == 1:
-            unvisited.pop(unvisited.index(r))
+    finally:
+        # remove visited customers
+        for r in route:
+            if unvisited.count(r) == 1:
+                unvisited.pop(unvisited.index(r))
+        return route
+
     
-    return route
 def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, try_stations: int = 3):
     """
     Construct a solution using ***Sweeping algorithm*** and ***Greedy constructor*** \n
@@ -100,11 +117,9 @@ def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, tr
                     # * [depot, customer, depot] route
                     #------------------------------------------
                     if len(failed_customers) != 0 :
-                        # print(f"last resort, {len(failed_customers)} failed")
                         for f in failed_customers:
                             routes.append([inst.depot] + [f] + [inst.depot])
-                            
-                    # print(f"total cost for iteration {t+1}: {total_cost(routes)}")
+
                     break
                     
                 i -= 1
@@ -114,7 +129,7 @@ def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, tr
 
         cost = total_cost(routes)
         if cost < best_cost:
-            best_cost, best_routes = cost, routes
+            best_cost, best_routes = cost, deepcopy(routes)
 
     
     return best_routes
