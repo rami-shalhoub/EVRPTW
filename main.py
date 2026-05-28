@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 import time
 from statistics import mean
@@ -6,7 +7,8 @@ import click
 
 from src.helpers import export_to_csv, export_to_txt, total_cost
 from src.instances import get_instances
-from src.localSearch import local_search
+from src.localSearch1 import local_search as ls1
+from src.localSearch2 import local_search as ls2
 from src.solutionConstructor import greedy_construction
 
 
@@ -43,37 +45,37 @@ def Task1(iter: int, run: int, station: int):
         path = os.path.join(instance_folder, file)
         inst = get_instances(path)
         instance_name = file.replace(".txt", "")
-        final_costs: list[float] = []
-        total_times: list[float] = []
+        # final_costs: list[float] = []
+        # total_times: list[float] = []
 
         print(f"\nRunning {instance_name} for {run} runs...")
 
         # construction + local search
 
-        start = time.perf_counter()
+        # start = time.perf_counter()
 
         routes = greedy_construction(inst, iter, run, station)
 
         if routes is not None:
-            routes = local_search(routes, inst, run)
-            # cost = total_cost(routes)
+            #export greedy result
             final_cost = total_cost(routes)
-            final_costs.append(final_cost)
-            runtime = time.perf_counter() - start
-            total_times.append(runtime)
+            export_to_txt(routes, instance_name+'_g', final_cost)
 
-            # Skips the instance if all runs failed
-            if len(final_costs) == 0:
-                continue
+            
+            # export local search 1
+            routes1 = deepcopy(routes)
+            routes1= ls1(routes, inst)
+            cost = total_cost(routes1)
+            export_to_txt(routes1, instance_name+'_ls_1', cost)
 
-            best_final = min(final_costs)
-            avg_final = mean(final_costs)
-            avg_time = mean(total_times)
+            # export local search 2
+            routes2 = deepcopy(routes)
+            routes2= ls2(routes, inst, run)
+            cost = total_cost(routes2)
 
-            results.append((instance_name, best_final, avg_final, avg_time))
 
             # export solution
-            export_to_txt(routes, instance_name, best_final)
+            export_to_txt(routes2, instance_name+'_ls2', cost)
 
     return results
 
