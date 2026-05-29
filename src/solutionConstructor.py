@@ -5,13 +5,45 @@ from .helpers import find_best_stations, route_cost, shuffle, sweep_sort, total_
 from .instances import Instance, Node
 
 
+def insert_station (route:list[Node], customer:Node, inst:Instance, try_stations:int, last_resort:bool = False):
+    """
+    Station iteration \n   
+    to increase the chances of finding a station \n
+    we try the best n stations until one fits \n
+    otherwise we take the fist best station \n
+    """
+    new_route :list[Node] = []
+    battery = calculate_battery_consumption(route, inst)
+    stations = find_best_stations(route[-1], customer, inst, battery, try_stations)
+    if len(stations) > 0:
+        best, best_cost = stations[0], float("inf")
+        temp_route : list[Node] = []
+        for s in stations:
+            temp_route = route + [s] + [customer]
+            cost = route_cost(temp_route)
+            if cost < best_cost:
+                best_cost, best = cost, s
+
+        # * skip feasibility check if the station is inserted in the last resort fase
+        if not last_resort:
+            try:
+                is_feasible(inst, route + [best] + [customer])
+            except InfeasibilityError :
+                pass
+            else:
+                route.append(best)
+                route.append(customer)
+        else:
+            route.append(best)
+            route.append(customer)
+    new_route = deepcopy(route)
+    return new_route
+
 def route_constructor(unvisited: list[Node], inst: Instance, try_stations: int):
     """
     (Greedy constructor insert) the customers from the ordered list if they are feasible
     and Insert a charging station if needed \n
     Make sure that each route starts and end with the depot \n
-
-    :param try_stations: number of charging stations to consider
     """
     route: list[Node] = [inst.depot]  # starts the from the depot
     for i in range(len(unvisited)):
@@ -23,31 +55,8 @@ def route_constructor(unvisited: list[Node], inst: Instance, try_stations: int):
         try:
             is_feasible(inst, route + [unvisited[i]])
         except BatteryError:
-            #------------------------------------------
-            #INFO           Station iteration               
-            # * to increase the chances of finding a station
-            # * we try the best n stations until one fits
-            # * otherwise we take the fist best station
-            #------------------------------------------
-            battery = calculate_battery_consumption(route, inst)
-            stations = find_best_stations(route[-1], unvisited[i], inst, battery, try_stations)
-            if len(stations) > 0:
-                best, best_cost = stations[0], float("inf")
-                temp_route : list[Node] = []
-                for s in stations:
-                    temp_route = route + [s] + [unvisited[i]]
-                    cost = route_cost(temp_route)
-                    if cost < best_cost:
-                        best_cost, best = cost, s
-                try:
-                    is_feasible(inst, route + [best] + [unvisited[i]])
-                except InfeasibilityError:
-                    pass
-                    # print(f"station {best.id} before {unvisited[i].id} infeasible: {iE}")
-                else:
-                    route.append(best)
-                    route.append(unvisited[i])
-                
+            new_route = insert_station(route[:], unvisited[i], inst, try_stations)
+            route = deepcopy(new_route)
         except InfeasibilityError:
             continue  # skip this move entirely
         else:
@@ -71,6 +80,37 @@ def route_constructor(unvisited: list[Node], inst: Instance, try_stations: int):
                 unvisited.pop(unvisited.index(r))
         return route
 
+def last_resort(routes:list[list[Node]], failed_customers:list[Node], inst:Instance, try_stations:int):
+    """
+    Last resort for unvisited customersa \n
+    if the iteration finished, and there still unvisited customers \n
+    then construct the shortest possible route \n
+    """
+    for f in failed_customers:
+        try:
+            is_feasible(inst, [inst.depot] + [f] + [inst.depot])
+        except BatteryError:
+            # * if [D, f, D] failes try to go to a station befor the customer
+            route = insert_station([inst.depot], f, inst, try_stations, True)
+            try :
+                is_feasible(inst, route + [inst.depot])
+            except BatteryError:
+                # * if [D, S, f, D] failes try to go to a station befor returning to the depot
+                new_route = insert_station(route, inst.depot, inst, try_stations, True)
+                # if new_route[-1] != inst.depot:
+                #    # * if it failes to retun to depot show me
+                #     try:
+                #         is_feasible(inst, new_route + [inst.depot])
+                #     except InfeasibilityError as iE:
+                #         print(f"custoemr {f.id} couldn't reach the depot because \n {iE}")
+                # else:
+                #     routes.append(new_route)
+                
+                routes.append(new_route)
+            else:
+                routes.append(route + [inst.depot])
+        else:
+            routes.append([inst.depot] + [f] + [inst.depot])
     
 def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, try_stations: int = 3):
     """
@@ -110,16 +150,7 @@ def greedy_construction(inst: Instance, iterations: int = 1000, trys:int = 3, tr
             #--------------------------------------------------------------
             if len(unvisited) == 0 and len(failed_customers) > 0:
                 if i == 0:
-                    #------------------------------------------
-                    #?           Last resort               
-                    # * if the iteration finished, and there still
-                    # * unvisited customers, used then to construct
-                    # * [depot, customer, depot] route
-                    #------------------------------------------
-                    if len(failed_customers) != 0 :
-                        for f in failed_customers:
-                            routes.append([inst.depot] + [f] + [inst.depot])
-
+                    last_resort(routes, failed_customers, inst, try_stations)
                     break
                     
                 i -= 1
