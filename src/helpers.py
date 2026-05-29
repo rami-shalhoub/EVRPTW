@@ -4,6 +4,7 @@ import os
 import random
 import pandas as pd
 from .instances import Instance, Node
+import matplotlib.pyplot as plt
 
 #========================================================================
 #===                 General helper function                          ===
@@ -124,3 +125,11 @@ def shuffle (customers: list[Node], inst:Instance):
         case 4:
             customers = sweep_sort(customers, inst)
             customers = order_customers_by_distance(customers)
+
+def plot_history (history, title):
+     plt.figure()
+     plt.plot(history)
+     plt.xlabel("Iterations (improvements)")
+     plt.ylabel("Best objective value so far")
+     plt.title(title)
+     plt.show()                    

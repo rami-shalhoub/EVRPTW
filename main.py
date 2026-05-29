@@ -4,7 +4,7 @@ from statistics import mean
 
 import click
 
-from src.helpers import export_to_csv, export_to_txt, total_cost
+from src.helpers import export_to_csv, export_to_txt, total_cost, plot_history
 from src.instances import get_instances
 from src.localSearch import local_search
 from src.solutionConstructor import greedy_construction
@@ -39,6 +39,7 @@ def Task1(iter: int, run: int, station: int):
     instance_files = [f for f in os.listdir(instance_folder) if f.endswith(".txt")]
 
     results: list[tuple[str, float, float, float]] = []
+    results_history = []
     for file in instance_files:
         path = os.path.join(instance_folder, file)
         inst = get_instances(path)
@@ -55,7 +56,8 @@ def Task1(iter: int, run: int, station: int):
         routes = greedy_construction(inst, iter, run, station)
 
         if routes is not None:
-            routes = local_search(routes, inst)
+            routes, history = local_search(routes, inst)
+            results_history.append((instance_name, history))
             # cost = total_cost(routes)
             final_cost = total_cost(routes)
             final_costs.append(final_cost)
@@ -75,6 +77,12 @@ def Task1(iter: int, run: int, station: int):
             # export solution
             export_to_txt(routes, instance_name, final_cost)
 
+    best = min(results_history, key=lambda x: x[1][-1])
+    worst = max(results_history, key=lambda x: x[1][-1])
+
+    plot_history(best[1], f"Best instance: {best[0]}")
+    plot_history(worst[1], f"Worst instance: {worst[0]}")
+    
     return results
 
 
@@ -82,4 +90,4 @@ if __name__ == "__main__":
     results = Task1(standalone_mode=False)
     # Output in CSV file
     export_to_csv(results, "results_10")
-    
+
