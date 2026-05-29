@@ -82,3 +82,4 @@ if __name__ == "__main__":
     results = Task1(standalone_mode=False)
     # Output in CSV file
     export_to_csv(results, "results_10")
+    
