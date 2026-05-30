@@ -85,10 +85,12 @@ def sweep_angle(depot: Node, node: Node, ref_angle: float):
     cust_angle = math.atan2(node.y - depot.y, node.x - depot.x)
     return (cust_angle - ref_angle) % (2 * math.pi)
 
-def find_best_stations(cur_customer: Node, next_customer: Node, inst: Instance, current_battery:float, iterations: int):
+def find_best_stations(cur_customer: Node, next_customer: Node, inst: Instance, current_battery:float, iterations: int, stations_to_avoid:list[Node] = []):
     """Find the closest charging station between the current and next customer"""
     best_stations: list[Node] = list()
     stations = inst.stations[:]
+    if stations_to_avoid:
+        stations = [s for s in stations if s not in stations_to_avoid]
     for _ in range(iterations):
         best, best_detour = None, float("inf")
         for s in stations:
@@ -98,7 +100,7 @@ def find_best_stations(cur_customer: Node, next_customer: Node, inst: Instance, 
                 detour = dist(cur_customer, s) + dist(s, next_customer) - dist(cur_customer, next_customer)
                 if detour < best_detour:
                     best_detour, best = detour, s
-        if best is not None:
+        if best is not None :
             best_stations.append(stations.pop(stations.index(best)))
     return best_stations
 

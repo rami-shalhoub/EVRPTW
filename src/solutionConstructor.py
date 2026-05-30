@@ -1,20 +1,21 @@
 from copy import deepcopy
 
-from . import config
+from src import config
+
 from .feasibility import BatteryError, InfeasibilityError, is_feasible
 from .helpers import find_best_stations, route_cost, shuffle, sweep_sort, total_cost, calculate_battery_consumption
 from .instances import Instance, Node
 
 
-def insert_station (route:list[Node], customer:Node, inst:Instance, last_resort:bool = False):
+def insert_station (route:list[Node], customer:Node, inst:Instance, last_resort:bool = False, ignored_stations:list[Node] = []):
     """
     Station insertion \n
     - insert a station between the last customer in the route and `customer` 
     - to increase the chances of finding a station we try the best n stations until one fits, otherwise we take the fist best station
     """
     new_route :list[Node] = []
-    battery, _ = calculate_battery_consumption(route, inst)
-    stations = find_best_stations(route[-1], customer, inst, battery, config.STATIONS)
+    battery = calculate_battery_consumption(route, inst)
+    stations = find_best_stations(route[-1], customer, inst, battery, config.STATIONS, ignored_stations)
     if len(stations) > 0:
         best, best_cost = stations[0], float("inf")
         temp_route : list[Node] = []
@@ -75,9 +76,9 @@ def route_constructor(unvisited: list[Node], inst: Instance):
                 unvisited.pop(unvisited.index(r))
         return route
 
-def last_resort(routes:list[list[Node]], failed_customers:list[Node], inst:Instance):
+def last_resort(routes: list[list[Node]], failed_customers: list[Node], inst: Instance):
     """
-    Last resort for unvisited customersa \n
+    Last resort for unvisited customers \n
     if the iteration finished, and there still unvisited customers \n
     then construct the shortest possible route \n
     """
@@ -85,27 +86,31 @@ def last_resort(routes:list[list[Node]], failed_customers:list[Node], inst:Insta
         try:
             is_feasible(inst, [inst.depot] + [f] + [inst.depot])
         except BatteryError:
-            route = insert_station([inst.depot], f, inst, True)
-            try :
-                is_feasible(inst, route + [inst.depot])
+            route = insert_station([inst.depot], f, inst)
+            try:
+                is_feasible(inst,route + [inst.depot])
             except BatteryError:
-                # * if [D, S, f, D] failes try to go to a station befor returning to the depot
-                new_route = insert_station(route, inst.depot, inst, True)
-                # if new_route[-1] != inst.depot:
-                #    # * if it failes to retun to depot show me
-                #     try:
-                #         is_feasible(inst, new_route + [inst.depot])
-                #     except InfeasibilityError as iE:
-                #         print(f"custoemr {f.id} couldn't reach the depot because \n {iE}")
-                # else:
-                #     routes.append(new_route)
-                
-                routes.append(new_route)
+                route.pop()
+                route = insert_station(route, f, inst, True, ignored_stations= [s for s in route if s.type == 'f'])
+                try:
+                    is_feasible(inst, route + [inst.depot])
+                except BatteryError:
+                    route = insert_station(route, inst.depot, inst, False)
+                    try:
+                        is_feasible(inst, route)
+                    except BatteryError:
+                        route.pop()
+                        route = insert_station(route, inst.depot, inst, False)
+                        routes.append(route) # two station has been inserted before the customerm, and two after
+                    else:
+                        routes.append(route) # two station has been inserted before the customer, and one after 
+                else:
+                    routes.append(route + [inst.depot]) # two station has been inserted before the customer
             else:
-                routes.append(route + [inst.depot])
+                routes.append(route + [inst.depot]) # one station has been inserted before the customer
         else:
-            routes.append([inst.depot] + [f] + [inst.depot])
-    
+            routes.append( [inst.depot] + [f] + [inst.depot])
+
 def greedy_construction(inst: Instance):
     """
     Construct a solution using ***Sweeping algorithm*** and ***Greedy constructor*** \n

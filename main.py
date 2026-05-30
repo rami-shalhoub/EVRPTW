@@ -5,6 +5,7 @@ from statistics import mean
 
 import click
 
+from src import config
 from src.helpers import export_to_csv, export_to_txt, total_cost
 from src.instances import get_instances
 from src.localSearch1 import local_search as ls1
@@ -36,7 +37,10 @@ from src.solutionConstructor import greedy_construction
 # ===                 Task 1                       ===
 # ====================================================
 def Task1(iter: int, run: int, station: int):
-
+    config.ITERATIONS = iter
+    config.RUNS = run
+    config.STATIONS = station
+    
     instance_folder = "./resources/instances/"
     instance_files = [f for f in os.listdir(instance_folder) if f.endswith(".txt")]
 
@@ -54,7 +58,7 @@ def Task1(iter: int, run: int, station: int):
 
         # start = time.perf_counter()
 
-        routes = greedy_construction(inst, iter, run, station)
+        routes = greedy_construction(inst)
 
         if routes is not None:
             #export greedy result
