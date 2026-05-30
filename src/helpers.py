@@ -26,12 +26,18 @@ def update_battery(a:Node, b:Node, r:float, current_battry:float):
     return current_battry - consumed_energy(a,b,r)
 
 def calculate_battery_consumption (route:list[Node], inst:Instance):
+    """
+    Calculate the battery consumption throughout the route
+    if the battery ends at a note it return is node
+    """
     battery = inst.Q
     for i in range(len(route) - 1):
         battery -= consumed_energy(route[i], route[i+1], inst.r)
         if route[i+1].type == "f":
             battery = inst.Q
-    return battery
+        if battery < 0:
+            return battery, route[i+1]
+    return battery, inst.depot
 
 def charge_time(current_battery: float, Q: float, g: float):
     """Time to recharge from current_battery to full Q"""
