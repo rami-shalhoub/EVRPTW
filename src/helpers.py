@@ -35,9 +35,7 @@ def calculate_battery_consumption (route:list[Node], inst:Instance):
         battery -= consumed_energy(route[i], route[i+1], inst.r)
         if route[i+1].type == "f":
             battery = inst.Q
-        if battery < 0:
-            return battery, route[i+1]
-    return battery, inst.depot
+    return battery
 
 def charge_time(current_battery: float, Q: float, g: float):
     """Time to recharge from current_battery to full Q"""
