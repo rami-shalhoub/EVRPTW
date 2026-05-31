@@ -27,6 +27,10 @@ def update_battery(a:Node, b:Node, r:float, current_battry:float):
     return current_battry - consumed_energy(a,b,r)
 
 def calculate_battery_consumption (route:list[Node], inst:Instance):
+    """
+    Calculate the battery consumption throughout the route
+    if the battery ends at a note it return is node
+    """
     battery = inst.Q
     for i in range(len(route) - 1):
         battery -= consumed_energy(route[i], route[i+1], inst.r)
@@ -111,18 +115,18 @@ def order_customers_by_distance(unvisited: list[Node]) -> list[Node]:
         return []
     return [unvisited[0]] + sorted(unvisited[1:], key=lambda c: dist(unvisited[0], c))
     
-def shuffle (customers: list[Node], inst:Instance):
-    luck= random.randint(1,4)
+def shuffle(customers: list[Node], inst: Instance):
+    luck = random.randint(1, 4)
     match luck:
         case 1:
             customers = sweep_sort(customers, inst)
         case 2:
             customers = sweep_sort(customers, inst)
             customers.reverse()
-        case 3: 
+        case 3:
             customers = sweep_sort(customers, inst)
-            temp1, temp2 = customers[0:int(len(customers)/2)], customers[int(len(customers)/2):]
-            customers = temp2 + temp1
+            mid = len(customers) // 2
+            customers[:] = customers[mid:] + customers[:mid]
         case 4:
             customers = sweep_sort(customers, inst)
             customers = order_customers_by_distance(customers)
@@ -134,3 +138,4 @@ def plot_history (history, title):
      plt.ylabel("Best objective value so far")
      plt.title(title)
      plt.show()                    
+            customers[:] = order_customers_by_distance(customers)

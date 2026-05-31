@@ -9,10 +9,9 @@ from .instances import Instance, Node
 
 def insert_station (route:list[Node], customer:Node, inst:Instance, last_resort:bool = False, ignored_stations:list[Node] = []):
     """
-    Station iteration \n   
-    to increase the chances of finding a station \n
-    we try the best n stations until one fits \n
-    otherwise we take the fist best station \n
+    Station insertion \n
+    - insert a station between the last customer in the route and `customer` 
+    - to increase the chances of finding a station we try the best n stations until one fits, otherwise we take the fist best station
     """
     new_route :list[Node] = []
     battery = calculate_battery_consumption(route, inst)

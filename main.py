@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 import time
 from statistics import mean
