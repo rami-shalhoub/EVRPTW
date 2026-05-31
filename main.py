@@ -5,6 +5,8 @@ from statistics import mean
 import click
 
 from src.helpers import export_to_csv, export_to_txt, total_cost, plot_history
+from src import config
+from src.helpers import export_to_csv, export_to_txt, total_cost
 from src.instances import get_instances
 from src.localSearch import local_search
 from src.solutionConstructor import greedy_construction
@@ -34,7 +36,10 @@ from src.solutionConstructor import greedy_construction
 # ===                 Task 1                       ===
 # ====================================================
 def Task1(iter: int, run: int, station: int):
-
+    config.ITERATIONS = iter
+    config.RUNS = run
+    config.STATIONS = station
+    
     instance_folder = "./resources/instances/"
     instance_files = [f for f in os.listdir(instance_folder) if f.endswith(".txt")]
 
