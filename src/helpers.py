@@ -3,6 +3,7 @@ import os
 import random
 import pandas as pd
 from .instances import Instance, Node
+import matplotlib.pyplot as plt
 
 #========================================================================
 #===                 General helper function                          ===
@@ -66,7 +67,7 @@ def export_to_txt(routes: list[list[Node]], name: str, total_cost:float):
             
 def export_to_csv(results:list[tuple[str, float, float, float]], file_name: str ):
     data = pd.DataFrame(results, columns = ["instance", "best", "avg", "avg.time(s)"])
-    data.to_csv(f"{file_name}.csv", index = False, float_format="%.2f")
+    data.to_csv(f"{file_name}.csv", index = False, float_format="%.2f", sep=";", decimal=",")
    
 #========================================================================
 #===                Greedy algorithm helper functions                ===
@@ -125,3 +126,11 @@ def shuffle (customers: list[Node], inst:Instance):
         case 4:
             customers = sweep_sort(customers, inst)
             customers = order_customers_by_distance(customers)
+
+def plot_history (history, title):
+     plt.figure()
+     plt.plot(history)
+     plt.xlabel("Iterations (improvements)")
+     plt.ylabel("Best objective value so far")
+     plt.title(title)
+     plt.show()                    
