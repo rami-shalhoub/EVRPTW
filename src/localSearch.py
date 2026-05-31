@@ -19,6 +19,7 @@ def best_move(route:list[Node], customer:Node , inst:Instance, route_length: int
     temp_route = deepcopy(route)
     if ci != -1:
         temp_route.remove(customer)    # remove the customer (same-route move)
+        
     for i in range(1, len(temp_route)): # skip the depots
         new_route = None
         if ci != -1:
@@ -27,23 +28,34 @@ def best_move(route:list[Node], customer:Node , inst:Instance, route_length: int
                 continue
             
         try:
-            temp_route.insert(i, customer) # insert it is the new place
-            is_feasible (inst, temp_route)
+            temp_route.insert(i, customer)
+            is_feasible(inst, temp_route)
         except BatteryError as e:
             failed_index = e.edge_index + 1
-            temp_route_b = insert_station(temp_route[:failed_index],  e.next, inst)
-            if len(temp_route_b) == failed_index:  # nothing was appended
-                   continue
-            new_route = temp_route_b + temp_route[failed_index+1:]
-
-            # if still not feasible skip
-            try:
-                is_feasible(inst, new_route)
-            except InfeasibilityError:
+            failes_node = e.next
+            handled = False
+            while not handled:
+                temp_route_b = insert_station(temp_route[:failed_index], failes_node, inst)
+                if len(temp_route_b) == failed_index:
+                    temp_route.remove(customer)
+                    break
+                new_route = temp_route_b + temp_route[failed_index+1:]
+                try:
+                    is_feasible(inst, new_route)
+                except BatteryError as e:
+                    failed_index = e.edge_index + 1
+                    failes_node = e.next
+                except InfeasibilityError:
+                    temp_route.remove(customer)
+                    break
+                else:
+                    handled = True
+            if not handled:
                 continue
         except InfeasibilityError:
+            temp_route.remove(customer)
             continue
-        else :
+        else:
             new_route = deepcopy(temp_route)
         
         new_route_cost = route_cost(new_route)
@@ -101,36 +113,32 @@ def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
                                 continue
                         
                         for cj in range(len(routes[j])):
-                            
-                            # skip stations as insertion points
                             if routes[j][cj].type in ("d", "f"):
                                 continue
-                                # pass if it is the same customer
+
+                            if i == j:
                                 if ci == cj:
                                     continue
-
-                                new_route = best_move(routes[j],customer, inst, len(routes[j]), ci)
-                                if new_route is not  routes[i]:
+                                new_route = best_move(routes[j], customer, inst, len(routes[j]), ci)
+                                if new_route is not routes[i]:
                                     routes[i] = deepcopy(new_route)
                                     improved = True
                                     improvements += 1
                                     break
-
                             else:
                                 new_route_a = best_move(routes[j], customer, inst, len(routes[j]))
 
                                 if new_route_a is not routes[j]:
-                                    new_route_b = routes[i][:ci] + routes[i][ci + 1 :]
+                                    new_route_b = routes[i][:ci] + routes[i][ci + 1:]
                                     old_cost = route_cost(routes[i]) + route_cost(routes[j])
                                     new_cost = route_cost(new_route_b) + route_cost(new_route_a)
-    
+
                                     if new_cost < old_cost:
                                         routes[j] = deepcopy(new_route_a)
                                         routes[i] = deepcopy(new_route_b)
                                         improved = True
                                         improvements += 1
 
-                                    # break out of all inner loops
                                     break
                         if improved:
                             break

@@ -45,7 +45,7 @@ def Task1(iter: int, run: int, station: int):
 
     results: list[tuple[str, float, float, float]] = []
     for file in instance_files:
-        if file : 
+        if file: 
             path = os.path.join(instance_folder, file)
             inst = get_instances(path)
             instance_name = file.replace(".txt", "")
@@ -71,7 +71,7 @@ def Task1(iter: int, run: int, station: int):
     
                 # export solution
                 export_to_txt(routes2, instance_name+'_ls', cost)
-
+                
     return results
 
 
