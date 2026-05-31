@@ -13,7 +13,8 @@ def best_move(route:list[Node], customer:Node , inst:Instance, route_length: int
     - check for route feasibility after a swap and try to insert a station if needed
     """
     best_route = None
-    best_route_cost = route_cost(route)
+    # same-route: compare against original cost; cross-route: accept any feasible
+    best_route_cost = route_cost(route) if ci != -1 else float("inf")
     
     temp_route = deepcopy(route)
     if ci != -1:
@@ -79,7 +80,9 @@ def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
     best_cost = float("inf")
     for _ in range(config.RUNS):
         improved = True
-        while improved:
+        improvements = 0
+        while improved and improvements < config.MAX_LOCAL_IMPROVEMENTS:
+            remove_empty_route(routes)
             improved = False
             for i in range(len(routes)):
                 for ci in range(len(routes[i])):
@@ -88,17 +91,20 @@ def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
                     if routes[i][ci].type in ("d", "f"):
                         continue
 
+                    customer = routes[i][ci]
+                    
                     for j in range(len(routes)):
+                        # cross-route: skip if target lacks capacity
+                        if i != j:
+                            route_load = sum(n.demand for n in routes[j] if n.type == "c")
+                            if route_load + customer.demand > inst.C:
+                                continue
+                        
                         for cj in range(len(routes[j])):
                             
                             # skip stations as insertion points
                             if routes[j][cj].type in ("d", "f"):
                                 continue
-                                
-                            customer = routes[i][ci]
-                            
-                            # same route move
-                            if i == j:
                                 # pass if it is the same customer
                                 if ci == cj:
                                     continue
@@ -107,6 +113,7 @@ def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
                                 if new_route is not  routes[i]:
                                     routes[i] = deepcopy(new_route)
                                     improved = True
+                                    improvements += 1
                                     break
 
                             else:
@@ -121,6 +128,7 @@ def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
                                         routes[j] = deepcopy(new_route_a)
                                         routes[i] = deepcopy(new_route_b)
                                         improved = True
+                                        improvements += 1
 
                                     # break out of all inner loops
                                     break
