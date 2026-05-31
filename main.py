@@ -1,11 +1,14 @@
 import os
-import time
-from statistics import mean
 
 import click
 
 from src import config
-from src.helpers import export_to_csv, export_to_txt, total_cost, plot_history
+from src.helpers import (
+    export_to_txt,
+    export_to_csv,
+    export_summary_csv,
+    total_cost,
+)
 from src.instances import get_instances
 from src.localSearch import local_search
 from src.solutionConstructor import greedy_construction
@@ -38,65 +41,48 @@ def Task1(iter: int, run: int, station: int):
     config.ITERATIONS = iter
     config.RUNS = run
     config.STATIONS = station
-    
+
     instance_folder = "./resources/instances/"
     instance_files = [f for f in os.listdir(instance_folder) if f.endswith(".txt")]
 
-    results: list[tuple[str, float, float, float]] = []
-    results_history = []
+    run_data: list[dict] = []
 
     for file in instance_files:
         path = os.path.join(instance_folder, file)
         inst = get_instances(path)
         instance_name = file.replace(".txt", "")
-        final_costs: list[float] = []
-        total_times: list[float] = []
 
-        print(f"\nRunning {instance_name} for {run} runs...")
+        print(f"\n{instance_name} – running greedy + local search...")
 
-        best_cost = float("inf")
-        best_routes = None
-        best_history = None
+        routes, greedy_costs, greedy_times = greedy_construction(inst)
+        cost = total_cost(routes)
+        export_to_txt(routes, f"{instance_name}_g", cost)
+        
+        routes, ls_costs, ls_times = local_search(routes, inst)
+        cost = total_cost(routes)
+        export_to_txt(routes, f"{instance_name}_ls", cost)
 
-        for r in range(run):
-            print(f"{instance_name} | run {r+1}/{run}")
+        for i, (c, t) in enumerate(zip(greedy_costs, greedy_times)):
+            run_data.append({
+                "instance": instance_name,
+                "algorithm": "greedy",
+                "run": i,
+                "cost": c,
+                "time": t,
+            })
 
-            start = time.perf_counter()
+        for i, (c, t) in enumerate(zip(ls_costs, ls_times)):
+            run_data.append({
+                "instance": instance_name,
+                "algorithm": "ls",
+                "run": i,
+                "cost": c,
+                "time": t,
+            })
 
-            
-            routes, history = greedy_construction(inst)
-
-            routes, history = local_search(routes, inst)
-            cost = total_cost(routes)
-            final_costs.append(cost)
-            total_times.append(time.perf_counter() - start)
-
-            if cost < best_cost:
-                best_cost = cost
-                best_routes = routes
-                best_history = history
-
-
-        best_final = min(final_costs)
-        avg_final = mean(final_costs)
-        avg_time = mean(total_times)
-
-        results.append((instance_name, best_final, avg_final, avg_time))
-        results_history.append((instance_name, best_history))
-
-        if best_routes is not None:
-            export_to_txt(best_routes, instance_name, best_cost)
-
-    best = min(results_history, key=lambda x: x[1][-1])
-    worst = max(results_history, key=lambda x: x[1][-1])
-
-    plot_history(best[1], f"Best instance: {best[0]}")
-    plot_history(worst[1], f"Worst instance: {worst[0]}")
-
-    return results
+    export_to_csv(run_data, "algo_run_data")
+    export_summary_csv ()
 
 
 if __name__ == "__main__":
-    results = Task1(standalone_mode=False)
-    if results:
-        export_to_csv(results, "results_10")
+    Task1(standalone_mode=False)

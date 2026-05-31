@@ -1,3 +1,4 @@
+import time
 from copy import deepcopy
 
 from src import config
@@ -120,8 +121,10 @@ def greedy_construction(inst: Instance):
     """
     best_routes: list[list[Node]] = list()
     best_cost:float = float("inf")
-    history: list[float] =[]
+    cost_history: list[float] =[]
+    time_history: list[float] =[]
     for t in range(config.RUNS):
+        start = time.perf_counter()
         routes: list[list[Node]] = list()
         failed_customers: list[Node] = list()
         unvisited:list[Node] = sweep_sort(inst.customers[:], inst)
@@ -150,9 +153,10 @@ def greedy_construction(inst: Instance):
                 failed_customers.clear()
 
         cost = total_cost(routes)
+        elapsed = time.perf_counter() - start
+        cost_history.append(cost)
+        time_history.append(elapsed)
         if cost < best_cost:
             best_cost, best_routes = cost, deepcopy(routes)
-            history.append(best_cost)
-
     
-    return best_routes, history
+    return best_routes, cost_history, time_history

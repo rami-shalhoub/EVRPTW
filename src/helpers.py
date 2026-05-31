@@ -71,21 +71,63 @@ def export_to_txt(routes: list[list[Node]], name: str, total_cost:float):
         file.write(f"{total_cost}\n")
         for route in routes:
             file.write(", ".join(node.id for node in route) + "\n")
-            
-def export_to_csv(results:list[tuple[str, float, float, float]], file_name: str ):
-    data = pd.DataFrame(results, columns = ["instance", "best", "avg", "avg.time(s)"])
-    data.to_csv(f"{file_name}.csv", index = False, float_format="%.2f")
 
+def export_to_csv(run_data: list[dict], file_name: str):
+    df = pd.DataFrame(run_data)
+    df.to_csv(f"{file_name}.csv", index=False, float_format="%.4f")
 
-def plot_history(history: list[float], title: str):
-    plt.figure()
-    plt.plot(history)
-    plt.xlabel("Iterations (improvements)")
-    plt.ylabel("Best objective value so far")
-    plt.title(title)
-    plt.show()
-    plt.savefig(f"{title.replace(' ', '_')}.png")
-    plt.close
+def export_summary_csv(input_csv: str = "algo_run_data.csv", output_csv: str = "summary_results.csv"):
+    """
+    Read the per-run CSV, filter to the last algorithm (ls),
+    and save a summary with best cost, avg cost, and avg time per instance.
+    """
+    df = pd.read_csv(input_csv)
+    ls_df = df[df["algorithm"] == "ls"]
+    summary = (
+        ls_df.groupby("instance")
+        .agg(best_cost=("cost", "min"), avg_cost=("cost", "mean"), avg_time=("time", "mean"))
+        .reset_index()
+        .round(4)
+    )
+    summary.to_csv(output_csv, index=False)
+    print(f"Summary saved to {output_csv}")
+
+def plot_algo_performance(csv_path: str):
+    df = pd.read_csv(csv_path)
+
+    for algo, title in [("greedy", "Greedy Construction"), ("ls", "Local Search")]:
+        algo_df = df[df.algorithm == algo]
+        stats = algo_df.groupby("instance").agg(
+            best_cost=("cost", "min"),
+            avg_cost=("cost", "mean"),
+            worst_cost=("cost", "max"),
+            avg_time=("time", "mean"),
+        )
+
+        instances = stats.index.tolist()
+        x = range(len(instances))
+        width = 0.25
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+        ax1.bar([i - width for i in x], stats.best_cost, width, label="Best", color="tab:green")
+        ax1.bar(x, stats.avg_cost, width, label="Avg", color="tab:blue")
+        ax1.bar([i + width for i in x], stats.worst_cost, width, label="Worst", color="tab:red")
+        ax1.set_xticks(x, instances, rotation=45, ha="right")
+        ax1.set_ylabel("Cost")
+        ax1.set_title(f"{title} – Cost per Instance")
+        ax1.legend()
+
+        ax2.bar(x, stats.avg_time, width, label="Avg Time", color="tab:orange")
+        ax2.set_xticks(x, instances, rotation=45, ha="right")
+        ax2.set_ylabel("Time (s)")
+        ax2.set_title(f"{title} – Avg Time per Instance")
+        ax2.legend()
+
+        fig.tight_layout()
+        plt.savefig(f"{algo}_performance.png")
+        plt.show()
+
    
 #========================================================================
 #===                Greedy algorithm helper functions                ===
@@ -129,6 +171,11 @@ def order_customers_by_distance(unvisited: list[Node]) -> list[Node]:
         return []
     return [unvisited[0]] + sorted(unvisited[1:], key=lambda c: dist(unvisited[0], c))
     
+
+
+
+
+
 def shuffle(customers: list[Node], inst: Instance):
     luck = random.randint(1, 4)
     match luck:

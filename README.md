@@ -32,6 +32,35 @@ Construct routes that:
 - constant travel speed
 
 ---
+## Instances
+
+|  |  |
+| --- | --- |
+| ‘StringID’ | used at the end to show the constructed solution |
+| ‘Type’ | used to fast identify the node type (‘d’: depot, ‘f’: charging station, ‘c’: customer) |
+| (x, y) | the node coordinates |
+| ‘demand’ | how much cargo this node needs |
+| ‘ReadyTime’ $e_{i}$ | earliest time the vehicle may arrive at this node. If it arrives earlier, it waits |
+| ‘DueDate’ $l_{i}$ | latest time the vehicle may **begin service** at this node. Arriving after this = time window violation |
+| ‘ServiceTime’ $s_{i}$ | how long the vehicle spends at the node after arriving (this is **not** the charge time) |
+### Data Structure
+
+the data is taken from the instances files and store them in custom data type `Node`
+
+```python
+@dataclass()
+class Node:
+    id: str
+    type : str
+    x: float
+    y: float
+    demand: float
+    ready: float
+    due: float
+    service: float
+```
+
+---
 
 ## Implementation
 
@@ -79,3 +108,39 @@ graph TB
     end
 
     Task1 --> Task2 --> Task3
+```
+
+---
+
+## How to Run 
+
+1.  clone the app
+    
+    ```sh
+    git clone https://github.com/rami-shalhoub/EVRPTW.git
+    cd ./EVRPTW
+    ```
+2.  setup python environment
+    
+    ```sh
+    python -m venv .env
+    source ./.env/bin/activate
+    pip install -r requirements.txt
+    ```
+3.  run the app
+    
+    ```sh
+    python main.py
+    ```
+    
+    or check the option with `python main.py --help`
+4.  check the data
+    
+    ```sh
+    python validate_all.py --solution-dir ./solution --instance-dir ./resources/instances
+    ```
+5.  run `shiny`
+    
+    ```sh
+    shiny run
+    ```

@@ -1,3 +1,4 @@
+import time
 from copy import deepcopy
 
 from src import config
@@ -58,11 +59,10 @@ def best_move(route:list[Node], customer:Node , inst:Instance, route_length: int
         else:
             new_route = deepcopy(temp_route)
 
-        if new_route is not None:
-            new_route_cost = route_cost(new_route)
-            if new_route_cost < best_route_cost:
-                best_route = deepcopy(new_route)
-                best_route_cost = new_route_cost
+        new_route_cost = route_cost(new_route)
+        if new_route_cost < best_route_cost:
+            best_route = deepcopy(new_route)
+            best_route_cost = new_route_cost
             
         if customer in temp_route:    
             temp_route.remove(customer)
@@ -88,11 +88,13 @@ def remove_empty_route(routes:list[list[Node]]):
             routes.remove(route)
     
 
-def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[Node]], list[float]]:
-    best_routes = routes
+def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[Node]], list[float], list[float]]:
+    best_routes = None
     best_cost = float("inf")
-    history: list[float] = []
+    cost_history: list[float] = []
+    time_history: list[float] = []
     for _ in range(config.RUNS):
+        start = time.perf_counter()
         improved = True
         improvements = 0
         while improved and improvements < config.MAX_LOCAL_IMPROVEMENTS:
@@ -150,12 +152,14 @@ def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[No
                     break
 
         cost = total_cost(routes)
+        elapsed = time.perf_counter() - start
+        cost_history.append(cost)
+        time_history.append(elapsed)
         if cost < best_cost:
             best_cost, best_routes = cost, deepcopy(routes)
-            history.append(best_cost)
             
         remove_empty_route(routes)
         pertubate(routes, inst)
 
     best_routes = best_routes if best_routes is not None else routes
-    return best_routes, history
+    return best_routes, cost_history, time_history
