@@ -57,11 +57,12 @@ def best_move(route:list[Node], customer:Node , inst:Instance, route_length: int
             continue
         else:
             new_route = deepcopy(temp_route)
-        
-        new_route_cost = route_cost(new_route)
-        if new_route_cost < best_route_cost:
-            best_route = deepcopy(new_route)
-            best_route_cost = new_route_cost
+
+        if new_route is not None:
+            new_route_cost = route_cost(new_route)
+            if new_route_cost < best_route_cost:
+                best_route = deepcopy(new_route)
+                best_route_cost = new_route_cost
             
         if customer in temp_route:    
             temp_route.remove(customer)
@@ -87,9 +88,10 @@ def remove_empty_route(routes:list[list[Node]]):
             routes.remove(route)
     
 
-def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
-    best_routes = None
+def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[Node]], list[float]]:
+    best_routes = routes
     best_cost = float("inf")
+    history: list[float] = []
     for _ in range(config.RUNS):
         improved = True
         improvements = 0
@@ -103,59 +105,6 @@ def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
                     if routes[i][ci].type in ("d", "f"):
                         continue
 
-<<<<<<< HEAD
-    best_cost = total_cost(routes)
-    history = [best_cost]
-
-    while improved:
-        improved = False
-
-        for i in range(len(routes)):
-            for ci in range(len(routes[i])):
-                # only relocate customers
-                if routes[i][ci].type in ("d", "f"):
-                    continue
-
-                for j in range(len(routes)):
-                    for cj in range(len(routes[j])):
-                        # skip trivial same-position moves
-                        if i == j:
-                            continue
-                        # skip stations as insertion points
-                        if routes[j][cj].type in ("d", "f"):
-                            continue
-
-                        customer = routes[i][ci]
-
-                        new_route_a = routes[i][:ci] + routes[i][ci + 1 :]
-                        new_route_b = routes[j][:cj] + [customer] + routes[j][cj:]
-
-                        #if not is_feasible(inst,new_route_a) or not is_feasible(inst, new_route_b):
-                            #continue
-                        try:
-                            is_feasible(inst, new_route_a)
-                            is_feasible(inst,new_route_b)
-                        except InfeasibilityError:
-                            continue    
-
-                        old_cost = route_cost(routes[i]) + route_cost(routes[j])
-                        new_cost = route_cost(new_route_a) + route_cost(new_route_b)
-
-                        if new_cost < old_cost:
-                            # write back using indices — this actually updates routes
-                            # remove empty route [depot, depot]
-                            if len(new_route_a) == 2:
-                                routes.pop(i)
-                            else:
-                                routes[i] = new_route_a
-                            routes[j] = new_route_b
-                            improved = True
-                            
-                            current_cost = total_cost(routes)
-                            if current_cost < best_cost:
-                                best_cost = current_cost
-                                history.append (best_cost)
-=======
                     customer = routes[i][ci]
                     
                     for j in range(len(routes)):
@@ -185,7 +134,6 @@ def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
                                     new_route_b = routes[i][:ci] + routes[i][ci + 1:]
                                     old_cost = route_cost(routes[i]) + route_cost(routes[j])
                                     new_cost = route_cost(new_route_b) + route_cost(new_route_a)
->>>>>>> localSearchFix
 
                                     if new_cost < old_cost:
                                         routes[j] = deepcopy(new_route_a)
@@ -200,17 +148,14 @@ def local_search(routes: list[list[Node]], inst: Instance) -> list[list[Node]]:
                         break
                 if improved:
                     break
-                    
 
-<<<<<<< HEAD
-    return routes, history
-=======
         cost = total_cost(routes)
         if cost < best_cost:
             best_cost, best_routes = cost, deepcopy(routes)
+            history.append(best_cost)
             
         remove_empty_route(routes)
-        # pertubate(routes, inst)
+        pertubate(routes, inst)
 
-    return best_routes if best_routes is not None else routes
->>>>>>> localSearchFix
+    best_routes = best_routes if best_routes is not None else routes
+    return best_routes, history

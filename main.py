@@ -1,13 +1,11 @@
-from copy import deepcopy
 import os
 import time
 from statistics import mean
 
 import click
 
-from src.helpers import export_to_csv, export_to_txt, total_cost, plot_history
 from src import config
-from src.helpers import export_to_csv, export_to_txt, total_cost
+from src.helpers import export_to_csv, export_to_txt, total_cost, plot_history
 from src.instances import get_instances
 from src.localSearch import local_search
 from src.solutionConstructor import greedy_construction
@@ -16,7 +14,7 @@ from src.solutionConstructor import greedy_construction
 @click.command()
 @click.option(
     "--iter",
-    default=1000,
+    default=100,
     prompt="iteration",
     help="the number of iteration perormed in the constructor algorithm",
 )
@@ -60,17 +58,13 @@ def Task1(iter: int, run: int, station: int):
         best_routes = None
         best_history = None
 
-        # construction + local search
-
         for r in range(run):
             print(f"{instance_name} | run {r+1}/{run}")
 
             start = time.perf_counter()
 
-            routes = greedy_construction(inst, iter, run, station)
-
-            if routes is None:
-                continue
+            
+            routes, history = greedy_construction(inst)
 
             routes, history = local_search(routes, inst)
             cost = total_cost(routes)
@@ -88,23 +82,21 @@ def Task1(iter: int, run: int, station: int):
         avg_time = mean(total_times)
 
         results.append((instance_name, best_final, avg_final, avg_time))
-
-         # export solution
-        export_to_txt(best_routes, instance_name, best_cost)
-
         results_history.append((instance_name, best_history))
+
+        if best_routes is not None:
+            export_to_txt(best_routes, instance_name, best_cost)
 
     best = min(results_history, key=lambda x: x[1][-1])
     worst = max(results_history, key=lambda x: x[1][-1])
 
     plot_history(best[1], f"Best instance: {best[0]}")
     plot_history(worst[1], f"Worst instance: {worst[0]}")
-        
+
     return results
 
 
 if __name__ == "__main__":
     results = Task1(standalone_mode=False)
-    # Output in CSV file
-    export_to_csv(results, "results_10")
-
+    if results:
+        export_to_csv(results, "results_10")

@@ -120,6 +120,7 @@ def greedy_construction(inst: Instance):
     """
     best_routes: list[list[Node]] = list()
     best_cost:float = float("inf")
+    history: list[float] =[]
     for t in range(config.RUNS):
         routes: list[list[Node]] = list()
         failed_customers: list[Node] = list()
@@ -151,6 +152,7 @@ def greedy_construction(inst: Instance):
         cost = total_cost(routes)
         if cost < best_cost:
             best_cost, best_routes = cost, deepcopy(routes)
+            history.append(best_cost)
 
     
-    return best_routes
+    return best_routes, history

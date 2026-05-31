@@ -2,8 +2,8 @@ import math
 import os
 import random
 import pandas as pd
-from .instances import Instance, Node
 import matplotlib.pyplot as plt
+from .instances import Instance, Node
 
 #========================================================================
 #===                 General helper function                          ===
@@ -52,6 +52,9 @@ def total_cost(routes:list[list[Node]]):
         cost += route_cost(route)
     return round(cost, 3)
 
+#========================================================================
+#===                    Exporting function                            ===
+#========================================================================
 def print_routes(routes:list[list[Node]], msg: str = ""):
     print(msg)
     print(f"total cost: {total_cost(routes)}")
@@ -71,7 +74,18 @@ def export_to_txt(routes: list[list[Node]], name: str, total_cost:float):
             
 def export_to_csv(results:list[tuple[str, float, float, float]], file_name: str ):
     data = pd.DataFrame(results, columns = ["instance", "best", "avg", "avg.time(s)"])
-    data.to_csv(f"{file_name}.csv", index = False, float_format="%.2f", sep=";", decimal=",")
+    data.to_csv(f"{file_name}.csv", index = False, float_format="%.2f")
+
+
+def plot_history(history: list[float], title: str):
+    plt.figure()
+    plt.plot(history)
+    plt.xlabel("Iterations (improvements)")
+    plt.ylabel("Best objective value so far")
+    plt.title(title)
+    plt.show()
+    plt.savefig(f"{title.replace(' ', '_')}.png")
+    plt.close
    
 #========================================================================
 #===                Greedy algorithm helper functions                ===
@@ -129,13 +143,6 @@ def shuffle(customers: list[Node], inst: Instance):
             customers[:] = customers[mid:] + customers[:mid]
         case 4:
             customers = sweep_sort(customers, inst)
-            customers = order_customers_by_distance(customers)
-
-def plot_history (history, title):
-     plt.figure()
-     plt.plot(history)
-     plt.xlabel("Iterations (improvements)")
-     plt.ylabel("Best objective value so far")
-     plt.title(title)
-     plt.show()                    
             customers[:] = order_customers_by_distance(customers)
+
+
