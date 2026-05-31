@@ -40,6 +40,7 @@ def Task1(iter: int, run: int, station: int):
 
     results: list[tuple[str, float, float, float]] = []
     results_history = []
+
     for file in instance_files:
         path = os.path.join(instance_folder, file)
         inst = get_instances(path)
@@ -49,40 +50,50 @@ def Task1(iter: int, run: int, station: int):
 
         print(f"\nRunning {instance_name} for {run} runs...")
 
+        best_cost = float("inf")
+        best_routes = None
+        best_history = None
+
         # construction + local search
 
-        start = time.perf_counter()
+        for r in range(run):
+            print(f"{instance_name} | run {r+1}/{run}")
 
-        routes = greedy_construction(inst, iter, run, station)
+            start = time.perf_counter()
 
-        if routes is not None:
-            routes, history = local_search(routes, inst)
-            results_history.append((instance_name, history))
-            # cost = total_cost(routes)
-            final_cost = total_cost(routes)
-            final_costs.append(final_cost)
-            runtime = time.perf_counter() - start
-            total_times.append(runtime)
+            routes = greedy_construction(inst, iter, run, station)
 
-            # Skips the instance if all runs failed
-            if len(final_costs) == 0:
+            if routes is None:
                 continue
 
-            best_final = min(final_costs)
-            avg_final = mean(final_costs)
-            avg_time = mean(total_times)
+            routes, history = local_search(routes, inst)
+            cost = total_cost(routes)
+            final_costs.append(cost)
+            total_times.append(time.perf_counter() - start)
 
-            results.append((instance_name, best_final, avg_final, avg_time))
+            if cost < best_cost:
+                best_cost = cost
+                best_routes = routes
+                best_history = history
 
-            # export solution
-            export_to_txt(routes, instance_name, final_cost)
+
+        best_final = min(final_costs)
+        avg_final = mean(final_costs)
+        avg_time = mean(total_times)
+
+        results.append((instance_name, best_final, avg_final, avg_time))
+
+         # export solution
+        export_to_txt(best_routes, instance_name, best_cost)
+
+        results_history.append((instance_name, best_history))
 
     best = min(results_history, key=lambda x: x[1][-1])
     worst = max(results_history, key=lambda x: x[1][-1])
 
     plot_history(best[1], f"Best instance: {best[0]}")
     plot_history(worst[1], f"Worst instance: {worst[0]}")
-    
+        
     return results
 
 
