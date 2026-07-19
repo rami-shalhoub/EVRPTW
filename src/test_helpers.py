@@ -3,7 +3,7 @@ from src.helpers import dist, travel_time, consumed_energy, update_battery, calc
 
 class TestHelpers(unittest.TestCase):
     def setUp(self):
-        # Create some sample nodes for testing
+        # Example nodes for testing
         self.node_a = type('Node', (object,), {'x': 0, 'y': 0, 'type': 'c'})()
         self.node_b = type('Node', (object,), {'x': 3, 'y': 4, 'type': 'c'})()
         self.node_c = type('Node', (object,), {'x': 6, 'y': 8, 'type': 'f'})()
@@ -26,12 +26,12 @@ class TestHelpers(unittest.TestCase):
     def test_calculate_battery_consumption(self):
         route = [self.node_a, self.node_b]
         battery_consumption = calculate_battery_consumption(route, self.instance)
-        self.assertAlmostEqual(battery_consumption, 95.0)  # Battery should reset at node_c
+        self.assertAlmostEqual(battery_consumption, 95.0)
 
     def test_charge_time(self):
         current_battery = 50
         charge_time_value = charge_time(current_battery, self.instance.Q, 2)
-        self.assertAlmostEqual(charge_time_value, 100.0)  # Time to charge from 50 to full at rate g=2
+        self.assertAlmostEqual(charge_time_value, 100.0)
 
     def test_route_cost(self):
         route = [self.node_a, self.node_b]
