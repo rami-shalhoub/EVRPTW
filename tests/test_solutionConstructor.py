@@ -1,5 +1,9 @@
+import os
+import sys
 import unittest
 import random
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src import config
 
@@ -15,7 +19,6 @@ from src.instances import Node, Instance
 
 
 class TestSolutionConstructor(unittest.TestCase):
-
     def setUp(self):
 
         config.RUNS = 1
@@ -23,7 +26,6 @@ class TestSolutionConstructor(unittest.TestCase):
         config.STATIONS = 5
 
         random.seed(0)
-
 
         self.depot = Node(
             id="D",
@@ -36,7 +38,6 @@ class TestSolutionConstructor(unittest.TestCase):
             service=0,
         )
 
-
         self.customer1 = Node(
             id="C1",
             x=3,
@@ -47,7 +48,6 @@ class TestSolutionConstructor(unittest.TestCase):
             due=100,
             service=0,
         )
-
 
         self.customer_far = Node(
             id="C2",
@@ -60,7 +60,6 @@ class TestSolutionConstructor(unittest.TestCase):
             service=0,
         )
 
-
         self.station = Node(
             id="F1",
             x=5,
@@ -72,136 +71,76 @@ class TestSolutionConstructor(unittest.TestCase):
             service=0,
         )
 
-
     def create_instance(self):
 
         return Instance(
             depot=self.depot,
-            customers=[
-                self.customer1,
-                self.customer_far
-            ],
-            stations=[
-                self.station
-            ],
+            customers=[self.customer1, self.customer_far],
+            stations=[self.station],
             Q=50,
             C=10,
             r=1,
             v=1,
-            g=1
+            g=1,
         )
 
     def test_insert_station_adds_station(self):
 
         inst = self.create_instance()
 
-        route = [
-            self.depot
-        ]
+        route = [self.depot]
 
-        result = insert_station(
-            route,
-            self.customer_far,
-            inst
-        )
+        result = insert_station(route, self.customer_far, inst)
 
-        self.assertIn(
-            self.customer_far,
-            result
-        )
+        self.assertIn(self.customer_far, result)
 
-        stations = [
-            n for n in result
-            if n.type == "f"
-        ]
+        stations = [n for n in result if n.type == "f"]
 
-        self.assertGreaterEqual(
-            len(stations),
-            1
-        )
-
+        self.assertGreaterEqual(len(stations), 1)
 
     def test_insert_station_returns_new_route(self):
 
         inst = self.create_instance()
 
-        route = [
-            self.depot
-        ]
+        route = [self.depot]
 
-        result = insert_station(
-            route,
-            self.customer1,
-            inst
-        )
+        result = insert_station(route, self.customer1, inst)
 
         # Rückgabe ist eine neue Liste
-        self.assertIsNot(
-            route,
-            result
-        )
+        self.assertIsNot(route, result)
 
         # Ergebnis enthält den Kunden
-        self.assertIn(
-            self.customer1,
-            result
-        )
+        self.assertIn(self.customer1, result)
 
     def test_route_constructor_adds_customer(self):
 
         inst = self.create_instance()
 
-        customers = [
-            self.customer1
-        ]
+        customers = [self.customer1]
 
-        route = route_constructor(
-            customers,
-            inst
-        )
+        route = route_constructor(customers, inst)
 
-        self.assertIn(
-            self.customer1,
-            route
-        )
-
+        self.assertIn(self.customer1, route)
 
     def test_route_constructor_returns_feasible_route(self):
 
         inst = self.create_instance()
 
-        customers = [
-            self.customer1
-        ]
+        customers = [self.customer1]
 
-        route = route_constructor(
-            customers,
-            inst
-        )
+        route = route_constructor(customers, inst)
 
-        is_feasible(
-            inst,
-            route
-        )
-
+        is_feasible(inst, route)
 
     def test_route_constructor_removes_customer(self):
 
         inst = self.create_instance()
 
-        customers = [
-            self.customer1
-        ]
+        customers = [self.customer1]
 
-        route_constructor(
-            customers,
-            inst
-        )
+        route_constructor(customers, inst)
 
-        self.assertEqual(
-            len(customers),
-            0
-        )
+        self.assertEqual(len(customers), 0)
 
     def test_last_resort_adds_customer(self):
 
@@ -209,25 +148,14 @@ class TestSolutionConstructor(unittest.TestCase):
 
         routes = []
 
-        failed_customers = [
-            self.customer1
-        ]
+        failed_customers = [self.customer1]
 
-        last_resort(
-            routes,
-            failed_customers,
-            inst
-        )
+        last_resort(routes, failed_customers, inst)
 
-        self.assertEqual(
-            len(routes),
-            1
-        )
+        self.assertEqual(len(routes), 1)
 
-        self.assertIn(
-            self.customer1,
-            routes[0]
-        )
+        self.assertIn(self.customer1, routes[0])
+
 
 if __name__ == "__main__":
     unittest.main()

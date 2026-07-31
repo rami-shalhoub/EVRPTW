@@ -1,17 +1,18 @@
+import os
+import sys
 import unittest
 
-from .feasibility import (
-    is_feasible,
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from src.feasibility import (
     BatteryError,
-    TimeWindowError,
     CapacityError,
+    TimeWindowError,
+    is_feasible,
 )
-
-from .instances import Node, Instance
+from src.instances import Instance, Node
 
 
 class TestFeasibility(unittest.TestCase):
-
     def setUp(self):
 
         self.depot = Node(
@@ -46,7 +47,6 @@ class TestFeasibility(unittest.TestCase):
             due=100,
             service=0,
         )
-
 
     def create_instance(self, Q=100, C=20):
 
@@ -88,29 +88,15 @@ class TestFeasibility(unittest.TestCase):
         ]
 
         with self.assertRaises(BatteryError) as error:
-
             is_feasible(inst, route)
 
+        self.assertEqual(error.exception.current, self.depot)
 
-        self.assertEqual(
-            error.exception.current,
-            self.depot
-        )
+        self.assertEqual(error.exception.next, self.customer)
 
-        self.assertEqual(
-            error.exception.next,
-            self.customer
-        )
+        self.assertEqual(error.exception.route_index, 0)
 
-        self.assertEqual(
-            error.exception.route_index,
-            0
-        )
-
-        self.assertEqual(
-            error.exception.edge_index,
-            0
-        )
+        self.assertEqual(error.exception.edge_index, 0)
 
     def test_time_window_error(self):
 
@@ -132,26 +118,14 @@ class TestFeasibility(unittest.TestCase):
             late_customer,
         ]
 
-
         with self.assertRaises(TimeWindowError) as error:
-
             is_feasible(inst, route)
 
+        self.assertEqual(error.exception.node, late_customer)
 
-        self.assertEqual(
-            error.exception.node,
-            late_customer
-        )
+        self.assertEqual(error.exception.route_index, 0)
 
-        self.assertEqual(
-            error.exception.route_index,
-            0
-        )
-
-        self.assertEqual(
-            error.exception.edge_index,
-            0
-        )
+        self.assertEqual(error.exception.edge_index, 0)
 
     def test_capacity_error(self):
 
@@ -166,7 +140,6 @@ class TestFeasibility(unittest.TestCase):
             service=0,
         )
 
-
         inst = self.create_instance(C=10)
 
         route = [
@@ -174,31 +147,18 @@ class TestFeasibility(unittest.TestCase):
             heavy_customer,
         ]
 
-
         with self.assertRaises(CapacityError) as error:
-
             is_feasible(inst, route)
 
+        self.assertEqual(error.exception.node, heavy_customer)
 
-        self.assertEqual(
-            error.exception.node,
-            heavy_customer
-        )
+        self.assertEqual(error.exception.load, 50)
 
-        self.assertEqual(
-            error.exception.load,
-            50
-        )
-
-        self.assertEqual(
-            error.exception.capacity,
-            10
-        )
+        self.assertEqual(error.exception.capacity, 10)
 
     def test_charging_station_resets_battery(self):
 
         inst = self.create_instance(Q=10)
-
 
         customer2 = Node(
             id="C2",
@@ -211,7 +171,6 @@ class TestFeasibility(unittest.TestCase):
             service=0,
         )
 
-
         route = [
             self.depot,
             self.customer,
@@ -222,7 +181,6 @@ class TestFeasibility(unittest.TestCase):
         result = is_feasible(inst, route)
 
         self.assertIsNone(result)
-
 
     def test_multiple_routes(self):
 
@@ -240,16 +198,9 @@ class TestFeasibility(unittest.TestCase):
             self.depot,
         ]
 
-
-        result = is_feasible(
-            inst,
-            route1,
-            route2
-        )
-
+        result = is_feasible(inst, route1, route2)
 
         self.assertIsNone(result)
-
 
 
 if __name__ == "__main__":

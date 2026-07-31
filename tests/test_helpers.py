@@ -1,13 +1,28 @@
+import os
+import sys
 import unittest
-from src.helpers import dist, travel_time, consumed_energy, update_battery, calculate_battery_consumption, charge_time, route_cost, total_cost
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from src.helpers import (
+    dist,
+    travel_time,
+    consumed_energy,
+    update_battery,
+    calculate_battery_consumption,
+    charge_time,
+    route_cost,
+    total_cost,
+)
+
 
 class TestHelpers(unittest.TestCase):
     def setUp(self):
         # Example nodes for testing
-        self.node_a = type('Node', (object,), {'x': 0, 'y': 0, 'type': 'c'})()
-        self.node_b = type('Node', (object,), {'x': 3, 'y': 4, 'type': 'c'})()
-        self.node_c = type('Node', (object,), {'x': 6, 'y': 8, 'type': 'f'})()
-        self.instance = type('Instance', (object,), {'Q': 100, 'r': 1})()
+        self.node_a = type("Node", (object,), {"x": 0, "y": 0, "type": "c"})()
+        self.node_b = type("Node", (object,), {"x": 3, "y": 4, "type": "c"})()
+        self.node_c = type("Node", (object,), {"x": 6, "y": 8, "type": "f"})()
+        self.instance = type("Instance", (object,), {"Q": 100, "r": 1})()
 
     def test_dist(self):
         self.assertAlmostEqual(dist(self.node_a, self.node_b), 5.0)
@@ -43,3 +58,7 @@ class TestHelpers(unittest.TestCase):
         total_cost_value = total_cost(routes)
         expected_cost = dist(self.node_a, self.node_b) + dist(self.node_b, self.node_c)
         self.assertAlmostEqual(total_cost_value, expected_cost)
+
+
+if __name__ == "__main__":
+    unittest.main()
