@@ -159,7 +159,7 @@ def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[No
             best_cost, best_routes = cost, deepcopy(routes)
             
         remove_empty_route(routes)
-        pertubate(routes, inst)
+        #pertubate(routes, inst)
 
     best_routes = best_routes if best_routes is not None else routes
     return best_routes, cost_history, time_history
