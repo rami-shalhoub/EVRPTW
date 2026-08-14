@@ -82,9 +82,9 @@ def export_summary_csv(input_csv: str = "algo_run_data.csv", output_csv: str = "
     and save a summary with best cost, avg cost, and avg time per instance.
     """
     df = pd.read_csv(input_csv)
-    ls_df = df[df["algorithm"] == "ls"]
+    #ls_df = df[df["algorithm"] == "ls"]
     summary = (
-        ls_df.groupby("instance")
+        df.groupby(["instance", "algorithm"])
         .agg(best_cost=("cost", "min"), avg_cost=("cost", "mean"), avg_time=("time", "mean"))
         .reset_index()
         .round(4)

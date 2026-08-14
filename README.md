@@ -110,6 +110,25 @@ graph TB
     Task1 --> Task2 --> Task3
 ```
 
+## Task 2
+    1.	Take Construction heuristic from Task 1  
+    2.	Simulated Annealing
+     a.	Neighborhood 1: Customer Relocate: select random customer, remove it, insert it in a new position
+     b.	Charging Station Repair: Check after each customer relocate if the route is still batteriefeasible  if no then insert cheapest reachable charging station. If the charging station is between two customers and the battery is enough then delete the charging station. Optional: If two stations are possible then select the nearest one
+
+## Task 3:
+Several Neighborhoods: 
+N1 – Relocate: Move one Customer
+N2- Swap: Swap two customers
+N3 – Multiple Relocate
+
+Improving Intensification by local search instead of an evaluation after every big change:
+Relocate --> 2-Opt --> Charging Station Optimization --> Evaluate
+
+Improving by bigger changes:
+Two relocates, more swaps, relocate + station replace
+
+
 ---
 
 ## How to Run 

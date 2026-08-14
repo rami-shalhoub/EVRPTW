@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 
 import click
@@ -12,6 +13,7 @@ from src.helpers import (
 from src.instances import get_instances
 from src.localSearch import local_search
 from src.solutionConstructor import greedy_construction
+from src.simulatedAnnealing import simulated_annealing
 
 
 @click.command()
@@ -58,9 +60,13 @@ def Task1(iter: int, run: int, station: int):
         cost = total_cost(routes)
         export_to_txt(routes, f"{instance_name}_g", cost)
         
-        routes, ls_costs, ls_times = local_search(routes, inst)
+        routes, ls_costs, ls_times = local_search(deepcopy(routes), inst)
         cost = total_cost(routes)
         export_to_txt(routes, f"{instance_name}_ls", cost)
+
+        sa_routes, sa_costs, sa_times = simulated_annealing(inst, deepcopy(routes))
+        sa_cost = total_cost(sa_routes)
+        export_to_txt(sa_routes, f"{instance_name}_sa", sa_cost)
 
         for i, (c, t) in enumerate(zip(greedy_costs, greedy_times)):
             run_data.append({
@@ -80,6 +86,20 @@ def Task1(iter: int, run: int, station: int):
                 "time": t,
             })
 
+        for i, (c, t) in enumerate(
+            zip( 
+                sa_costs, 
+                sa_times 
+            )       
+        ): 
+            run_data.append({ 
+                "instance": instance_name, 
+                "algorithm": "sa", 
+                "run": i, 
+                "cost": c, 
+                "time": t, 
+            })
+             
     export_to_csv(run_data, "algo_run_data")
     export_summary_csv ()
 

@@ -160,3 +160,44 @@ def greedy_construction(inst: Instance):
             best_cost, best_routes = cost, deepcopy(routes)
     
     return best_routes, cost_history, time_history
+
+def construct_from_order( 
+    customer_order: list[Node],
+    inst: Instance 
+): 
+    routes: list[list[Node]] = [] 
+    failed_customers: list[Node] = [] 
+    unvisited = customer_order[:]
+    i = config.ITERATIONS 
+
+    while len(unvisited) != 0:
+        route = route_constructor( 
+            unvisited, 
+            inst 
+        )
+
+        if route[-1].type == "d": 
+            routes.append(route) 
+        else: 
+            failed_customers += [ 
+                r 
+                for r in route 
+                if r.type == "c" 
+            ] 
+        if len(unvisited) == 0: 
+            break 
+        if i > 0: 
+            i -= 1 
+            shuffle( 
+                unvisited, 
+                inst 
+            ) 
+        else: 
+            failed_customers += unvisited
+            last_resort(
+                routes, 
+                failed_customers,
+                inst 
+            ) 
+            break 
+    return routes
