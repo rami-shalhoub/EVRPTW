@@ -233,13 +233,16 @@ def simulated_annealing(
     temperature_history = []
 
     iteration = 0
+    no_improvement_stages = 0
 
     # 4. while stopping criterion not reached
 
     while (
         temperature
-        > config.SA_MIN_TEMPERATURE
+        > config.SA_MIN_TEMPERATURE and no_improvement_stages < config.SA_MAX_NO_IMPROVEMENT_STAGES
     ):
+
+        best_cost_before_stage = best_cost
 
         for _ in range(
             config.SA_ITERATIONS_PER_TEMPERATURE
@@ -315,9 +318,13 @@ def simulated_annealing(
                 temperature
             )
 
+        if best_cost < best_cost_before_stage:
+
+            no_improvement_stages = 0
+        else:
+            no_improvement_stages += 1
         
         # 9. update(T)
-        
 
         temperature = update_temperature(
             temperature
