@@ -57,7 +57,7 @@ def find_matching_instance(solution_path: Path, instance_dir: Path) -> Path | No
     stem = solution_path.stem
     if stem.endswith("_solution"):
         stem = stem[:-len("_solution")]
-    for suffix in ("_g", "_ls2", "_ls", "_ls_main"):
+    for suffix in ("_sa","_g", "_ls2", "_ls", "_ls_main"):
         if stem.endswith(suffix):
             stem = stem[:-len(suffix)]
             break
