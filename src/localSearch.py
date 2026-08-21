@@ -3,12 +3,12 @@ from copy import deepcopy
 
 from src import config
 from src.feasibility import BatteryError, InfeasibilityError, is_feasible
-from src.helpers import route_cost, shuffle, total_cost
+from src.helpers import route_cost, total_cost
 from src.instances import Instance, Node
 from src.solutionConstructor import insert_station
 
 
-def best_move(route:list[Node], customer:Node , inst:Instance, route_length: int , ci:int = -1):
+def best_move(route:list[Node], customer:Node , inst:Instance , ci:int = -1):
     """
     Find he best move for a customer 
     - check for route feasibility after a swap and try to insert a station if needed
@@ -23,10 +23,9 @@ def best_move(route:list[Node], customer:Node , inst:Instance, route_length: int
         
     for i in range(1, len(temp_route)): # skip the depots
         new_route = None
-        if ci != -1:
-            # skip the original customer location (when performing the move in the same route)
-            if ci == i :
-                continue
+        # skip the original customer location (when performing the move in the same route)
+        if ci == i :
+            continue
             
         try:
             temp_route.insert(i, customer)
@@ -68,19 +67,6 @@ def best_move(route:list[Node], customer:Node , inst:Instance, route_length: int
             temp_route.remove(customer)
 
     return best_route if best_route is not None else route
-
-
-
-def pertubate (routes:list[list[Node]], inst:Instance):
-    for route in routes:
-        customers = [n for n in route if n.type == "c"]
-        shuffle(customers, inst)
-        idx = 0
-        for i, n in enumerate(route):
-            if n.type == "c":
-                route[i] = customers[idx]
-                idx += 1
-
             
 def remove_empty_route(routes:list[list[Node]]):
     for route in routes[:]:
@@ -123,14 +109,14 @@ def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[No
                             if i == j:
                                 if ci == cj:
                                     continue
-                                new_route = best_move(routes[j], customer, inst, len(routes[j]), ci)
+                                new_route = best_move(routes[j], customer, inst, ci)
                                 if new_route is not routes[i]:
                                     routes[i] = deepcopy(new_route)
                                     improved = True
                                     improvements += 1
                                     break
                             else:
-                                new_route_a = best_move(routes[j], customer, inst, len(routes[j]))
+                                new_route_a = best_move(routes[j], customer, inst)
 
                                 if new_route_a is not routes[j]:
                                     new_route_b = routes[i][:ci] + routes[i][ci + 1:]
@@ -159,7 +145,6 @@ def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[No
             best_cost, best_routes = cost, deepcopy(routes)
             
         remove_empty_route(routes)
-        #pertubate(routes, inst)
 
     best_routes = best_routes if best_routes is not None else routes
     return best_routes, cost_history, time_history
