@@ -20,13 +20,17 @@ def best_move(route:list[Node], customer:Node , inst:Instance , ci:int = -1):
     temp_route = deepcopy(route)
     if ci != -1:
         temp_route.remove(customer)    # remove the customer (same-route move)
-        
+
+    # remove station from the route
+    for station in [f for f in temp_route if f.type == 'f']:
+        temp_route.remove(station)
+
     for i in range(1, len(temp_route)): # skip the depots
         new_route = None
         # skip the original customer location (when performing the move in the same route)
         if ci == i :
             continue
-            
+           
         try:
             temp_route.insert(i, customer)
             is_feasible(inst, temp_route)
