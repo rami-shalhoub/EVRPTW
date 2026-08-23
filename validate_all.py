@@ -10,20 +10,16 @@ from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parent
 
-VERIFIER_DIR = (
-    Path.home()
-    / "Documents"
-    / "MSc AI"
-    / "Computational Logistics"
-    / "Project"
-    / "pyEVRPVerifier"
+VERIFIER_DIR = Path(
+    r"C:/jku/Metaheuristik/pyEVRPVerifiy"
 )
-VERIFIER_VENV = VERIFIER_DIR / ".venv" / "bin" / "python3"
+VERIFIER_VENV = VERIFIER_DIR / ".venv" / "Scripts" / "python.exe"
 VERIFIER_SCRIPT = VERIFIER_DIR / "src" / "main.py"
 
 # %%
 def run_verifier(instance_path: str, solution_path: str) -> str:
-    python = VERIFIER_VENV if VERIFIER_VENV.exists() else "python3"
+    python = VERIFIER_VENV if VERIFIER_VENV.exists() else sys.executable
+
     result = subprocess.run(
         [str(python), str(VERIFIER_SCRIPT),
          "--instance", instance_path,
@@ -57,7 +53,7 @@ def find_matching_instance(solution_path: Path, instance_dir: Path) -> Path | No
     stem = solution_path.stem
     if stem.endswith("_solution"):
         stem = stem[:-len("_solution")]
-    for suffix in ("_g", "_ls2", "_ls", "_ls_main"):
+    for suffix in ("_sa","_g", "_ls2", "_ls", "_ls_main"):
         if stem.endswith(suffix):
             stem = stem[:-len(suffix)]
             break

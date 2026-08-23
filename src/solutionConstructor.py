@@ -41,11 +41,16 @@ def insert_station (route:list[Node], customer:Node, inst:Instance, last_resort:
     new_route = deepcopy(route)
     return new_route
 
-def route_constructor(unvisited: list[Node], inst: Instance):
+def route_constructor(unvisited: list[Node], inst: Instance, mode: int = 1):
     """
     (Greedy constructor insert) the customers from the ordered list if they are feasible
     and Insert a charging station if needed \n
     Make sure that each route starts and end with the depot \n
+
+    mode: return-to-depot strategy \n
+    - 1: backtrace the route until the depot is reachable \n
+    - 2: reject the whole route if it cannot return to the depot (old method) \n
+    - 3: try to insert a station for the return leg, otherwise reject the whole route
     """
     route: list[Node] = [inst.depot]  # starts the from the depot
     for i in range(len(unvisited)):
@@ -64,18 +69,46 @@ def route_constructor(unvisited: list[Node], inst: Instance):
     #INFO             Return to depot
     # * check if rout can end with the depot
     # ----------------------------------------------------
-    try:
-        is_feasible(inst, route + [inst.depot])
-    except InfeasibilityError:
-        pass
-    else:
-        route.append(inst.depot)
-    finally:
-        # remove visited customers
-        for r in route:
-            if unvisited.count(r) == 1:
-                unvisited.pop(unvisited.index(r))
-        return route
+    if mode == 1:
+        # backtrace: drop the tail until the return leg is feasible
+        while True:
+            try:
+                is_feasible(inst, route + [inst.depot])
+            except InfeasibilityError:
+                if len(route) == 1:
+                    break
+                _ = route.pop()
+                if route[-1].type == 'f':
+                    _ = route.pop()
+            else:
+                route.append(inst.depot)
+                break
+    elif mode == 2:
+        # old method: if the route cannot return, reject the whole solution
+        try:
+            is_feasible(inst, route + [inst.depot])
+        except InfeasibilityError:
+            pass
+        else:
+            route.append(inst.depot)
+    elif mode == 3:
+        # insert a station to make the return leg feasible, otherwise reject
+        try:
+            is_feasible(inst, route + [inst.depot])
+        except BatteryError:
+            new_route = insert_station(route[:], inst.depot, inst)
+            if len(new_route) > len(route):
+                route = new_route  # already ends with the depot
+        except InfeasibilityError:
+            pass
+        else:
+            route.append(inst.depot)
+            
+    # remove visited customers
+    for r in route:
+        if unvisited.count(r) == 1:
+            unvisited.pop(unvisited.index(r))
+    return route
 
 def last_resort(routes: list[list[Node]], failed_customers: list[Node], inst: Instance):
     """
@@ -123,18 +156,27 @@ def greedy_construction(inst: Instance):
     best_cost:float = float("inf")
     cost_history: list[float] =[]
     time_history: list[float] =[]
-    for t in range(config.RUNS):
+    for mode in (1, 2, 3):
         start = time.perf_counter()
         routes: list[list[Node]] = list()
         failed_customers: list[Node] = list()
         unvisited:list[Node] = sweep_sort(inst.customers[:], inst)
         i = config.ITERATIONS
         while len(unvisited) != 0:
-            route = route_constructor(unvisited, inst)
-            if route[-1].type != 'd':
-                failed_customers += [r for r in route if r.type == 'c'] # remove the stations and the depot
+            route = route_constructor(unvisited, inst, mode)
+            served = [r for r in route if r.type == 'c']
+            #------------------------------------------
+            #INFO           failed check               
+            # * back-trace could not return to depot for any customer here:
+            # * leave them to the failed/retry path instead of looping forevery  
+            #------------------------------------------
+            if len(served) == 0:
+                failed_customers += unvisited
+                unvisited = []
+            elif route[-1].type != 'd':
+                failed_customers += served # remove the stations and the depot
             else:
-                routes.append(route)      
+                routes.append(route)
             shuffle(unvisited, inst)
             #--------------------------------------------------------------
             #INFO               Failed customers iterations                         
@@ -184,6 +226,17 @@ def construct_from_order(
                 for r in route 
                 if r.type == "c" 
             ] 
+        served = [r for r in route if r.type == "c"]
+        if len(served) == 0 and unvisited:
+            failed_customers += unvisited
+            unvisited.clear()
+            last_resort(
+                routes, 
+                failed_customers, 
+                inst 
+            )
+            break
+        
         if len(unvisited) == 0: 
             break 
         if i > 0: 
@@ -200,4 +253,18 @@ def construct_from_order(
                 inst 
             ) 
             break 
+    expected = {c.id for c in customer_order}
+    served = [
+        node.id
+        for route in routes
+        for node in route
+        if node.type == "c"
+    ]
+    served_set = set(served)
+    missing = expected - served_set
+    duplicates = [c for c in served if served.count(c) > 1]
+    if missing:
+        print(f"Warning: missing customers in constructed solution: {missing}")
+    if duplicates:
+        print(f"Warning: duplicate customers in constructed solution: {duplicates}")
     return routes
