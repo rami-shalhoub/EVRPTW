@@ -6,9 +6,76 @@ from copy import deepcopy
 from .feasibility import InfeasibilityError, is_feasible
 from src import config
 
-from .solutionConstructor import construct_from_order
-from .helpers import total_cost
+from .solutionConstructor import last_resort, route_constructor
+from .helpers import total_cost, shuffle
 from .instances import Instance, Node
+
+
+def construct_from_order( 
+    customer_order: list[Node],
+    inst: Instance 
+): 
+    routes: list[list[Node]] = [] 
+    failed_customers: list[Node] = [] 
+    unvisited = customer_order[:]
+    i = config.ITERATIONS 
+
+    while len(unvisited) != 0:
+        route = route_constructor( 
+            unvisited, 
+            inst 
+        )
+
+        if route[-1].type == "d": 
+            routes.append(route) 
+        else: 
+            failed_customers += [ 
+                r 
+                for r in route 
+                if r.type == "c" 
+            ] 
+        served = [r for r in route if r.type == "c"]
+        if len(served) == 0 and unvisited:
+            failed_customers += unvisited
+            unvisited.clear()
+            last_resort(
+                routes, 
+                failed_customers, 
+                inst 
+            )
+            break
+        
+        if len(unvisited) == 0: 
+            break 
+        if i > 0: 
+            i -= 1 
+            shuffle( 
+                unvisited, 
+                inst 
+            ) 
+        else: 
+            failed_customers += unvisited
+            last_resort(
+                routes, 
+                failed_customers,
+                inst 
+            ) 
+            break 
+    expected = {c.id for c in customer_order}
+    served = [
+        node.id
+        for route in routes
+        for node in route
+        if node.type == "c"
+    ]
+    served_set = set(served)
+    missing = expected - served_set
+    duplicates = [c for c in served if served.count(c) > 1]
+    if missing:
+        print(f"Warning: missing customers in constructed solution: {missing}")
+    if duplicates:
+        print(f"Warning: duplicate customers in constructed solution: {duplicates}")
+    return routes
 
 def get_customer_order(
     routes: list[list[Node]]
