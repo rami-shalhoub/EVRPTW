@@ -54,19 +54,35 @@ def Task1(iter: int, run: int, station: int):
         inst = get_instances(path)
         instance_name = file.replace(".txt", "")
 
-        print(f"\n{instance_name} – running greedy + local search...")
+        print(f"\n{instance_name} – running greedy + local search + simulated annealing")
 
-        routes, greedy_costs, greedy_times = greedy_construction(inst)
-        cost = total_cost(routes)
-        export_to_txt(routes, f"{instance_name}_g", cost)
-        
-        routes, ls_costs, ls_times = local_search(deepcopy(routes), inst)
-        cost = total_cost(routes)
-        export_to_txt(routes, f"{instance_name}_ls", cost)
+        #Greedy construction
+        greedy_routes, greedy_costs, greedy_times = greedy_construction(inst)
+        greedy_cost = total_cost(greedy_routes)
+        export_to_txt(greedy_routes, f"{instance_name}_g", greedy_cost)
 
-        sa_routes, sa_costs, sa_times = simulated_annealing(inst, deepcopy(routes))
-        sa_cost = total_cost(sa_routes)
-        export_to_txt(sa_routes, f"{instance_name}_sa", sa_cost)
+        #Local search
+        ls_routes, ls_costs, ls_times = local_search(deepcopy(greedy_routes), inst)
+        ls_cost = total_cost(ls_routes)
+        export_to_txt(ls_routes, f"{instance_name}_ls", ls_cost)
+
+        #Simulated annealing
+        sa_costs = []
+        sa_times = []
+
+        best_sa_cost = float("inf")
+        best_sa_routes = None
+
+        for run_idx in range (config.RUNS):
+            seed = config.SA_RANDOM_SEED + run_idx
+            sa_routes,_, sa_time = simulated_annealing(inst, deepcopy(greedy_routes), seed=seed)
+            sa_cost = total_cost(sa_routes)
+            sa_costs.append(sa_cost)
+            sa_times.append(sa_time)
+            if sa_cost < best_sa_cost:
+                best_sa_cost = sa_cost
+                best_sa_routes = deepcopy(sa_routes)
+        export_to_txt(best_sa_routes, f"{instance_name}_sa", best_sa_cost)
 
         for i, (c, t) in enumerate(zip(greedy_costs, greedy_times)):
             run_data.append({

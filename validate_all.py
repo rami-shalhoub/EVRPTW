@@ -10,20 +10,16 @@ from pathlib import Path
 
 PROJECT_DIR = Path(__file__).resolve().parent
 
-VERIFIER_DIR = (
-    Path.home()
-    / "Documents"
-    / "MSc AI"
-    / "Computational Logistics"
-    / "Project"
-    / "pyEVRPVerifier"
+VERIFIER_DIR = Path(
+    r"C:/jku/Metaheuristik/pyEVRPVerifiy"
 )
-VERIFIER_VENV = VERIFIER_DIR / ".venv" / "bin" / "python3"
+VERIFIER_VENV = VERIFIER_DIR / ".venv" / "Scripts" / "python.exe"
 VERIFIER_SCRIPT = VERIFIER_DIR / "src" / "main.py"
 
 # %%
 def run_verifier(instance_path: str, solution_path: str) -> str:
-    python = VERIFIER_VENV if VERIFIER_VENV.exists() else "python3"
+    python = VERIFIER_VENV if VERIFIER_VENV.exists() else sys.executable
+
     result = subprocess.run(
         [str(python), str(VERIFIER_SCRIPT),
          "--instance", instance_path,

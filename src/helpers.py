@@ -4,6 +4,7 @@ import random
 import pandas as pd
 import matplotlib.pyplot as plt
 from .instances import Instance, Node
+from src import config
 
 #========================================================================
 #===                 General helper function                          ===
@@ -169,12 +170,7 @@ def order_customers_by_distance(unvisited: list[Node]) -> list[Node]:
     """Order customers by distance from the first customer"""
     if not unvisited:
         return []
-    return [unvisited[0]] + sorted(unvisited[1:], key=lambda c: dist(unvisited[0], c))
-    
-
-
-
-
+    return [unvisited[0]] + sorted(unvisited[1:], key=lambda c: dist(unvisited[0], c))  
 
 def shuffle(customers: list[Node], inst: Instance):
     luck = random.randint(1, 4)
@@ -191,5 +187,3 @@ def shuffle(customers: list[Node], inst: Instance):
         case 4:
             customers = sweep_sort(customers, inst)
             customers[:] = order_customers_by_distance(customers)
-
-

@@ -3,11 +3,79 @@ import random
 import time
 from copy import deepcopy
 
+from .feasibility import InfeasibilityError, is_feasible
 from src import config
 
-from .solutionConstructor import construct_from_order
-from .helpers import total_cost
+from .solutionConstructor import last_resort, route_constructor
+from .helpers import total_cost, shuffle
 from .instances import Instance, Node
+
+
+def construct_from_order( 
+    customer_order: list[Node],
+    inst: Instance 
+): 
+    routes: list[list[Node]] = [] 
+    failed_customers: list[Node] = [] 
+    unvisited = customer_order[:]
+    i = config.ITERATIONS 
+
+    while len(unvisited) != 0:
+        route = route_constructor( 
+            unvisited, 
+            inst 
+        )
+
+        if route[-1].type == "d": 
+            routes.append(route) 
+        else: 
+            failed_customers += [ 
+                r 
+                for r in route 
+                if r.type == "c" 
+            ] 
+        served = [r for r in route if r.type == "c"]
+        if len(served) == 0 and unvisited:
+            failed_customers += unvisited
+            unvisited.clear()
+            last_resort(
+                routes, 
+                failed_customers, 
+                inst 
+            )
+            break
+        
+        if len(unvisited) == 0: 
+            break 
+        if i > 0: 
+            i -= 1 
+            shuffle( 
+                unvisited, 
+                inst 
+            ) 
+        else: 
+            failed_customers += unvisited
+            last_resort(
+                routes, 
+                failed_customers,
+                inst 
+            ) 
+            break 
+    expected = {c.id for c in customer_order}
+    served = [
+        node.id
+        for route in routes
+        for node in route
+        if node.type == "c"
+    ]
+    served_set = set(served)
+    missing = expected - served_set
+    duplicates = [c for c in served if served.count(c) > 1]
+    if missing:
+        print(f"Warning: missing customers in constructed solution: {missing}")
+    if duplicates:
+        print(f"Warning: duplicate customers in constructed solution: {duplicates}")
+    return routes
 
 def get_customer_order(
     routes: list[list[Node]]
@@ -27,7 +95,7 @@ def get_customer_order(
 
     return customer_order
 
-def random_neighbour(
+def random_customer_relocate(
     customer_order: list[Node]
 ):
     #Creation of a random neighbouring solution.
@@ -38,20 +106,93 @@ def random_neighbour(
     neighbour = customer_order[:]
 
     if len(neighbour) < 2:
-
         return neighbour
-
-    i, j = random.sample(
-        range(len(neighbour)),
-        2
-    )
-
-    neighbour[i], neighbour[j] = (
-        neighbour[j],
-        neighbour[i]
-    )
+    
+    i, j = random.sample(range(len(neighbour)), 2)
+    customer = neighbour.pop(i)
+    neighbour.insert(j, customer)
 
     return neighbour
+
+def random_neighbour(
+        routes: list[list[Node]],
+        inst: Instance,
+        iteration: int
+): 
+    if iteration % 2 == 0:
+        current_Order = get_customer_order(routes)
+        neighbour_order = random_customer_relocate(current_Order)
+        return construct_from_order(neighbour_order, inst)
+    else:
+        return random_station_relocate(routes, inst)
+
+def random_station_relocate(
+    routes: list[list[Node]],
+    inst: Instance
+):
+    neighbour = deepcopy(routes)
+    station_positions = []
+
+    for r_idx, route in enumerate(neighbour):
+
+        for n_idx, node in enumerate(route):
+
+            if node.type == "f":
+
+                station_positions.append((r_idx, n_idx))
+
+    if not station_positions:
+        return routes
+    
+    r_idx, n_idx = random.choice(station_positions)
+    route = neighbour[r_idx]
+
+    if n_idx ==0 or n_idx == len(route) -1:
+        return neighbour
+
+    old_station = route[n_idx]
+
+    candidate_stations = [s for s in inst.stations if s.id != old_station.id]
+
+    random.shuffle(candidate_stations)
+
+    for station in candidate_stations:
+
+        candidate_route = route[:]
+        candidate_route[n_idx] = station
+    
+        try:
+            is_feasible(inst,candidate_route)
+        except InfeasibilityError:
+           continue
+
+        neighbour[r_idx] = candidate_route
+        return neighbour     
+    return routes     
+
+def has_all_customers(
+    routes: list[list[Node]],
+    inst: Instance
+):
+    expected = {c.id for c in inst.customers}
+    served = [c.id for r in routes for c in r if c.type == "c"]
+    served_set = set(served)
+    if expected != served_set:
+        return False
+    if len(served) != len(served_set):
+        return False
+    return True
+
+def is_solution_feasible(
+    routes: list[list[Node]],
+    inst: Instance
+):
+    try:
+        for route in routes:
+            is_feasible(inst, route)
+    except InfeasibilityError:
+        return False
+    return True
 
 def accept(
     current_cost: float,
@@ -133,7 +274,7 @@ def calculate_initial_temperature(
         config.SA_TEMPERATURE_SAMPLES
     ):
 
-        neighbour_order = random_neighbour(
+        neighbour_order = random_customer_relocate(
             current_order
         )
 
@@ -185,6 +326,9 @@ def calculate_initial_temperature(
             config.SA_TARGET_ACCEPTANCE
         )
     )
+    print("Positivie deltas:", deltas)
+    print("Median delta:", median_delta)
+    print("Initial temperature:", T0)
 
     return T0
 
@@ -192,8 +336,11 @@ def calculate_initial_temperature(
 
 def simulated_annealing(
     inst: Instance,
-    initial_routes: list[list[Node]]
+    initial_routes: list[list[Node]],
+    seed = None
 ):
+    if seed is not None:
+        random.seed(seed)
 
     start = time.perf_counter()
 
@@ -203,6 +350,7 @@ def simulated_annealing(
         initial_routes,
         inst
     )
+    print(f"Initial temperature: {temperature:.2f}")
 
     # 2. x <- buildSolution()
     # The solution comes from our construction heuristic.
@@ -234,6 +382,10 @@ def simulated_annealing(
 
     iteration = 0
     no_improvement_stages = 0
+    accepted_moves = 0
+    rejected_moves = 0
+    infeasible_moves = 0
+    improving_moves = 0
 
     # 4. while stopping criterion not reached
 
@@ -241,36 +393,44 @@ def simulated_annealing(
         temperature
         > config.SA_MIN_TEMPERATURE and no_improvement_stages < config.SA_MAX_NO_IMPROVEMENT_STAGES
     ):
+        print(f"Temperature: {temperature:.2f}, best cost: {best_cost:.2f}")
 
         best_cost_before_stage = best_cost
 
         for _ in range(
             config.SA_ITERATIONS_PER_TEMPERATURE
         ):
+            
 
             iteration += 1
 
             # 5. x' <- randomNeighbour(x)
 
-            neighbour_order = (
-                random_neighbour(
-                    current_order
-                )
+            neighbour_solution = random_neighbour(
+                current_solution,
+                inst,
+                iteration
             )
 
-            # next we build a feasible solution from the neighbour
-            # customer order using the ordered construction heuristic.
+            # feasibility checks
+            if not has_all_customers(
+                neighbour_solution,
+                inst
+            ):
+                infeasible_moves += 1
+                continue
 
-            neighbour_solution = (
-                construct_from_order(
-                    neighbour_order,
-                    inst
-                )
-            )
+            if not is_solution_feasible(neighbour_solution, inst):
+                infeasible_moves += 1
+                continue
 
+            # Calc z(x*), the objective value of candidate solution
             neighbour_cost = total_cost(
                 neighbour_solution
             )
+
+            if neighbour_cost < current_cost:
+                improving_moves += 1
 
             # 6. x <- accept(x, x', T)
 
@@ -279,22 +439,24 @@ def simulated_annealing(
                 neighbour_cost,
                 temperature
             ):
+                accepted_moves += 1
+
 
                 current_solution = (
                     neighbour_solution
                 )
 
-                current_order = (
-                    neighbour_order
-                )
-
                 current_cost = (
                     neighbour_cost
                 )
+            else:
+                rejected_moves += 1    
 
             # 7. if z(x) < z(x*)
 
             if current_cost < best_cost:
+
+                print(f"New best solution found: {best_cost:.2f} -> {current_cost:.2f}")
 
                  # 8. x* <- x
 
@@ -335,8 +497,16 @@ def simulated_annealing(
         - start
     )
 
+    print(
+        f"SA statistics:"
+        f"accepted moves: {accepted_moves}, "
+        f"rejected moves: {rejected_moves}, "
+        f"infeasible moves: {infeasible_moves}, "
+        f"improving moves: {improving_moves}"
+    )
+
     return (
         best_solution,
         cost_history,
-        [elapsed_time]
+        elapsed_time
     )
