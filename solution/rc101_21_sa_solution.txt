@@ -1,7 +1,0 @@
-# solution for rc101_21_sa
-299.065
-D0, C52, C86, D0
-D0, C3, D0
-D0, C64, C91, D0
-D0, C80, C99, D0
-D0, C62, D0

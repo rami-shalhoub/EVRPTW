@@ -1,5 +1,0 @@
-# solution for r107_21_sa
-170.592
-D0, C66, S6, C19, D0
-D0, C96, D0
-D0, C1, D0

@@ -1,3 +1,0 @@
-# solution for r211_21_sa
-64.031
-D0, C19, D0
