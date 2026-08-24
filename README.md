@@ -32,9 +32,10 @@ Construct routes that:
 - constant travel speed
 
 ---
+
 ## Instances
 
-|  |  |
+| Attribute | Description |
 | --- | --- |
 | ‘StringID’ | used at the end to show the constructed solution |
 | ‘Type’ | used to fast identify the node type (‘d’: depot, ‘f’: charging station, ‘c’: customer) |
@@ -43,6 +44,7 @@ Construct routes that:
 | ‘ReadyTime’ $e_{i}$ | earliest time the vehicle may arrive at this node. If it arrives earlier, it waits |
 | ‘DueDate’ $l_{i}$ | latest time the vehicle may **begin service** at this node. Arriving after this = time window violation |
 | ‘ServiceTime’ $s_{i}$ | how long the vehicle spends at the node after arriving (this is **not** the charge time) |
+
 ### Data Structure
 
 the data is taken from the instances files and store them in custom data type `Node`
@@ -65,9 +67,6 @@ class Node:
 ## Implementation
 
 ```mermaid
----
-title: EVRPTW Algorithm Design
----
 graph TB
     a1(["SEQUENTIAL INSERTION<br>sort by angle insert greedily"])
     a2(["INSERT CHARGING STATION<br>whenever battery would run out"])
