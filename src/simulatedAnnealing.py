@@ -10,73 +10,6 @@ from .solutionConstructor import last_resort, route_constructor
 from .helpers import total_cost, shuffle
 from .instances import Instance, Node
 
-
-def construct_from_order( 
-    customer_order: list[Node],
-    inst: Instance 
-): 
-    routes: list[list[Node]] = [] 
-    failed_customers: list[Node] = [] 
-    unvisited = customer_order[:]
-    i = config.ITERATIONS 
-
-    while len(unvisited) != 0:
-        route = route_constructor( 
-            unvisited, 
-            inst 
-        )
-
-        if route[-1].type == "d": 
-            routes.append(route) 
-        else: 
-            failed_customers += [ 
-                r 
-                for r in route 
-                if r.type == "c" 
-            ] 
-        served = [r for r in route if r.type == "c"]
-        if len(served) == 0 and unvisited:
-            failed_customers += unvisited
-            unvisited.clear()
-            last_resort(
-                routes, 
-                failed_customers, 
-                inst 
-            )
-            break
-        
-        if len(unvisited) == 0: 
-            break 
-        if i > 0: 
-            i -= 1 
-            shuffle( 
-                unvisited, 
-                inst 
-            ) 
-        else: 
-            failed_customers += unvisited
-            last_resort(
-                routes, 
-                failed_customers,
-                inst 
-            ) 
-            break 
-    expected = {c.id for c in customer_order}
-    served = [
-        node.id
-        for route in routes
-        for node in route
-        if node.type == "c"
-    ]
-    served_set = set(served)
-    missing = expected - served_set
-    duplicates = [c for c in served if served.count(c) > 1]
-    if missing:
-        print(f"Warning: missing customers in constructed solution: {missing}")
-    if duplicates:
-        print(f"Warning: duplicate customers in constructed solution: {duplicates}")
-    return routes
-
 def get_customer_order(
     routes: list[list[Node]]
 ):
@@ -95,36 +28,122 @@ def get_customer_order(
 
     return customer_order
 
-def random_customer_relocate(
-    customer_order: list[Node]
+def random_customer_swap(
+    routes: list[Node],
+    inst: Instance
 ):
     #Creation of a random neighbouring solution.
     #Two customers are randomly selected and swapped.
     #Example:
         #[1, 2, 3, 4, 5] --> [1,4,3,2,5]
 
-    neighbour = customer_order[:]
+    neighbour = deepcopy(routes)
+    customer_positions = []
 
-    if len(neighbour) < 2:
+    for r_idx, route in enumerate(neighbour):
+
+        for n_idx, node in enumerate(route):
+
+            if node.type == "c":
+
+                customer_positions.append((r_idx, n_idx))
+
+    if len(customer_positions) < 2:
         return neighbour
-    
-    i, j = random.sample(range(len(neighbour)), 2)
-    customer = neighbour.pop(i)
-    neighbour.insert(j, customer)
+    (r1,p1), (r2,p2) = random.sample(customer_positions, 2)
+    neighbour[r1][p1], neighbour[r2][p2] = neighbour[r2][p2], neighbour[r1][p1]
 
     return neighbour
+
+def random_customer_relocate(
+        routes: list[list[Node]],
+        inst: Instance
+):
+    neighbour = deepcopy(routes)
+    customer_positions = []
+
+    for r_idx, route in enumerate(neighbour):
+
+        for n_idx, node in enumerate(route):
+
+            if node.type == "c":
+
+                customer_positions.append((r_idx, n_idx))
+
+    if len(customer_positions) < 2:
+        return neighbour
+    r1, p1 = random.choice(customer_positions)
+
+    possible_targets = [
+        (r,p)
+        for r,p in customer_positions
+        if (r,p) != (r1,p1)
+    ]
+    r2, p2 = random.choice(possible_targets)
+    customer = neighbour[r1].pop(p1)
+    if r1 == r2 and p2 > p1:
+        p2 -= 1
+    neighbour[r2].insert(p2, customer)            
+    return neighbour
+
+def random_2opt(
+    routes: list[list[Node]],
+    inst: Instance
+):
+    neighbour = deepcopy(routes)
+    candidate_routes = []
+
+    for r_idx, route in enumerate(neighbour):
+        customer_positions = [
+            i
+            for i, node in enumerate(route)
+            if node.type == "c"
+        ]
+        if len(customer_positions) >= 2:
+            candidate_routes.append(r_idx)
+
+    if not candidate_routes:
+        return neighbour
+    r_idx = random.choice(candidate_routes)
+    route = neighbour[r_idx]
+
+    customer_positions = [
+        i
+        for i, node in enumerate(route)
+        if node.type == "c"
+    ]
+    i, j = sorted(random.sample(customer_positions, 2))
+    if i ==j:
+        return neighbour
+    candidate_route = route[:]
+    candidate_route[i:j + 1] = reversed(
+        candidate_route[i:j + 1]
+    )
+
+    try:
+        is_feasible(
+            inst,
+            candidate_route
+        )
+    except InfeasibilityError:
+        return routes
+
+    neighbour[r_idx] = candidate_route
+
+    return neighbour        
 
 def random_neighbour(
         routes: list[list[Node]],
         inst: Instance,
         iteration: int
 ): 
-    if iteration % 2 == 0:
-        current_Order = get_customer_order(routes)
-        neighbour_order = random_customer_relocate(current_Order)
-        return construct_from_order(neighbour_order, inst)
-    else:
-        return random_station_relocate(routes, inst)
+    move = random.choice([
+        random_customer_swap,
+        random_2opt,
+        random_customer_relocate,
+        random_station_relocate
+    ])
+    return move(routes, inst)
 
 def random_station_relocate(
     routes: list[list[Node]],
@@ -258,10 +277,6 @@ def calculate_initial_temperature(
     # Determine T0 based on the cost differences of random worsening neighbours.
     # We choose T0 so that a typical worsening move has an acceptance probability of approximately 80%.
 
-    current_order = get_customer_order(
-        initial_routes
-    )
-
     current_cost = total_cost(
         initial_routes
     )
@@ -274,13 +289,10 @@ def calculate_initial_temperature(
         config.SA_TEMPERATURE_SAMPLES
     ):
 
-        neighbour_order = random_customer_relocate(
-            current_order
-        )
 
         neighbour_routes = (
-            construct_from_order(
-                neighbour_order,
+            random_customer_relocate(
+                initial_routes,
                 inst
             )
         )
@@ -360,11 +372,6 @@ def simulated_annealing(
     )
 
     current_cost = total_cost(
-        current_solution
-    )
-
-    # Extract the representation used by SA: the customer order
-    current_order = get_customer_order(
         current_solution
     )
 
