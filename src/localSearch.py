@@ -3,147 +3,204 @@ from copy import deepcopy
 
 from src import config
 from src.feasibility import BatteryError, InfeasibilityError, is_feasible
-from src.helpers import route_cost, shuffle, total_cost
+from src.helpers import route_cost, total_cost
 from src.instances import Instance, Node
-from src.solutionConstructor import insert_station
+from src.solutionConstructor import insert_station, last_resort
 
 
-def best_move(route:list[Node], customer:Node , inst:Instance, route_length: int , ci:int = -1):
+def _repair(candidate: list[Node], failed_index: int, failed_node: Node, inst: Instance) -> list[Node] | None:
     """
-    Find he best move for a customer 
-    - check for route feasibility after a swap and try to insert a station if needed
+    Splice charging stations into `candidate` until it is feasible \n
+    - returns the repaired route, or None when no station placement works
+    """
+    working = candidate
+    while True:
+        patched = insert_station(working[:failed_index], failed_node, inst)
+        if len(patched) == failed_index:
+            return None
+        working = patched + working[failed_index + 1:]
+        try:
+            is_feasible(inst, working)
+        except BatteryError as e:
+            failed_index, failed_node = e.edge_index + 1, e.next
+        except InfeasibilityError:
+            return None
+        else:
+            return working
+
+
+def best_move(route: list[Node], customer: Node, inst: Instance, ci: int = -1):
+    """
+    Find the best move for a customer
+    - check for route feasibility after the move and try to insert a station if needed
+    - stations are stripped upfront and re-inserted by the repair step
+    - same-route (ci != -1): only returns routes cheaper than the current one
+    - cross-route (ci == -1): returns the cheapest feasible insertion
+    Returns the passed-in `route` object when nothing better is feasible
     """
     best_route = None
     # same-route: compare against original cost; cross-route: accept any feasible
     best_route_cost = route_cost(route) if ci != -1 else float("inf")
-    
-    temp_route = deepcopy(route)
+
+    # station-free skeleton: depots + customers only, customer lifted out on same-route moves
+    base = [n for n in route if n.type != "f"]
     if ci != -1:
-        temp_route.remove(customer)    # remove the customer (same-route move)
-        
-    for i in range(1, len(temp_route)): # skip the depots
-        new_route = None
-        if ci != -1:
-            # skip the original customer location (when performing the move in the same route)
-            if ci == i :
-                continue
-            
+        base.remove(customer)
+
+    # the customer's original slot expressed in `base` indices (stations shift positions)
+    skip = sum(1 for n in route[:ci] if n.type != "f") if ci != -1 else -1
+
+    for i in range(1, len(base)):  # skip the depots
+        if i == skip:
+            continue
+
+        candidate = base[:i] + [customer] + base[i:]
         try:
-            temp_route.insert(i, customer)
-            is_feasible(inst, temp_route)
+            is_feasible(inst, candidate)
         except BatteryError as e:
-            failed_index = e.edge_index + 1
-            failes_node = e.next
-            handled = False
-            while not handled:
-                temp_route_b = insert_station(temp_route[:failed_index], failes_node, inst)
-                if len(temp_route_b) == failed_index:
-                    temp_route.remove(customer)
-                    break
-                new_route = temp_route_b + temp_route[failed_index+1:]
-                try:
-                    is_feasible(inst, new_route)
-                except BatteryError as e:
-                    failed_index = e.edge_index + 1
-                    failes_node = e.next
-                except InfeasibilityError:
-                    temp_route.remove(customer)
-                    break
-                else:
-                    handled = True
-            if not handled:
+            candidate = _repair(candidate, e.edge_index + 1, e.next, inst)
+            if candidate is None:
                 continue
         except InfeasibilityError:
-            temp_route.remove(customer)
             continue
-        else:
-            new_route = deepcopy(temp_route)
 
-        new_route_cost = route_cost(new_route)
+        new_route_cost = route_cost(candidate)
         if new_route_cost < best_route_cost:
-            best_route = deepcopy(new_route)
-            best_route_cost = new_route_cost
-            
-        if customer in temp_route:    
-            temp_route.remove(customer)
+            best_route, best_route_cost = candidate, new_route_cost
 
     return best_route if best_route is not None else route
 
 
+def route_sig(route: list[Node]) -> tuple:
+    """Hashable fingerprint of a route, used as cache key"""
+    return tuple(n.id for n in route)
 
-def pertubate (routes:list[list[Node]], inst:Instance):
-    for route in routes:
-        customers = [n for n in route if n.type == "c"]
-        shuffle(customers, inst)
-        idx = 0
-        for i, n in enumerate(route):
-            if n.type == "c":
-                route[i] = customers[idx]
-                idx += 1
 
-            
-def remove_empty_route(routes:list[list[Node]]):
+def solo_route(customer: Node, inst: Instance) -> list[Node] | None:
+    """
+    Build a standalone route for a single customer using the constructor's
+    last-resort escalation (depot -> customer -> depot, stations added as needed) \n
+    returns None when the customer cannot be served alone
+    """
+    tmp: list[list[Node]] = []
+    last_resort(tmp, [customer], inst)
+    if tmp and any(n is customer for n in tmp[0]):
+        return tmp[0]
+    return None
+
+
+def eject_costly_customers(routes: list[list[Node]], inst: Instance, k: int) -> bool:
+    """
+    Move the top-k most costly customers into their own solo routes \n
+    - a customer is costly when removing it shrinks its route's cost (removal savings)
+    - the split only happens when the solo route costs less than the savings,
+      i.e. the move is strictly net-positive
+    """
+    if k <= 0:
+        return False
+
+    savings: list[tuple[float, int, Node]] = []
+    for ri, route in enumerate(routes):
+        for ni, node in enumerate(route):
+            if node.type != "c":
+                continue
+            rest = route[:ni] + route[ni + 1:]
+            gain = route_cost(route) - route_cost(rest)
+            if gain > 0:
+                savings.append((gain, ri, node))
+    savings.sort(key=lambda s: s[0], reverse=True)
+
+    ejected = False
+    for _, ri, node in savings[:k]:
+        route = routes[ri]
+        idx = next((p for p, x in enumerate(route) if x is node), None)
+        if idx is None:
+            continue
+        solo = solo_route(node, inst)
+        if solo is None:
+            continue
+        rest = route[:idx] + route[idx + 1:]
+        if route_cost(route) - route_cost(rest) <= route_cost(solo):
+            continue
+        routes[ri] = rest
+        routes.append(solo)
+        ejected = True
+    return ejected
+
+
+def remove_empty_route(routes: list[list[Node]]):
     for route in routes[:]:
         if next((c for c in route if c.type == "c"), None) is None:
             routes.remove(route)
-    
+
 
 def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[Node]], list[float], list[float]]:
     best_routes = None
     best_cost = float("inf")
     cost_history: list[float] = []
     time_history: list[float] = []
-    for _ in range(config.RUNS):
+    for run in range(config.RUNS):
         start = time.perf_counter()
+        # diversify between chunks: split off the costliest customers (run 0 untouched)
+        if run > 0:
+            eject_costly_customers(routes, inst, config.EJECT_K)
+
+        # memoized best_move results; keys embed the target route's content,
+        # so stale entries become unreachable as soon as the route changes
+        cache: dict[tuple, list[Node] | None] = {}
         improved = True
         improvements = 0
         while improved and improvements < config.MAX_LOCAL_IMPROVEMENTS:
             remove_empty_route(routes)
             improved = False
+            loads = [sum(n.demand for n in r if n.type == "c") for r in routes]
             for i in range(len(routes)):
                 for ci in range(len(routes[i])):
-                    
+
                     # only relocate customers
                     if routes[i][ci].type in ("d", "f"):
                         continue
 
                     customer = routes[i][ci]
-                    
+
                     for j in range(len(routes)):
-                        # cross-route: skip if target lacks capacity
-                        if i != j:
-                            route_load = sum(n.demand for n in routes[j] if n.type == "c")
-                            if route_load + customer.demand > inst.C:
-                                continue
-                        
-                        for cj in range(len(routes[j])):
-                            if routes[j][cj].type in ("d", "f"):
-                                continue
-
-                            if i == j:
-                                if ci == cj:
-                                    continue
-                                new_route = best_move(routes[j], customer, inst, len(routes[j]), ci)
-                                if new_route is not routes[i]:
-                                    routes[i] = deepcopy(new_route)
-                                    improved = True
-                                    improvements += 1
-                                    break
+                        if i == j:
+                            key = (customer.id, route_sig(routes[i]))
+                            if key in cache:
+                                res = cache[key]
                             else:
-                                new_route_a = best_move(routes[j], customer, inst, len(routes[j]))
+                                moved = best_move(routes[i], customer, inst, ci)
+                                res = moved if moved is not routes[i] else None
+                                cache[key] = res
+                            if res is not None:
+                                routes[i] = res
+                                improved = True
+                                improvements += 1
+                        else:
+                            # cross-route: skip if target lacks capacity
+                            if loads[j] + customer.demand > inst.C:
+                                continue
 
-                                if new_route_a is not routes[j]:
-                                    new_route_b = routes[i][:ci] + routes[i][ci + 1:]
-                                    old_cost = route_cost(routes[i]) + route_cost(routes[j])
-                                    new_cost = route_cost(new_route_b) + route_cost(new_route_a)
+                            key = (customer.id, route_sig(routes[j]))
+                            if key in cache:
+                                res = cache[key]
+                            else:
+                                moved = best_move(routes[j], customer, inst)
+                                res = moved if moved is not routes[j] else None
+                                cache[key] = res
+                            if res is None:
+                                continue
 
-                                    if new_cost < old_cost:
-                                        routes[j] = deepcopy(new_route_a)
-                                        routes[i] = deepcopy(new_route_b)
-                                        improved = True
-                                        improvements += 1
+                            new_route_b = routes[i][:ci] + routes[i][ci + 1:]
+                            old_cost = route_cost(routes[i]) + route_cost(routes[j])
+                            new_cost = route_cost(new_route_b) + route_cost(res)
 
-                                    break
+                            if new_cost < old_cost:
+                                routes[j] = res
+                                routes[i] = new_route_b
+                                improved = True
+                                improvements += 1
+
                         if improved:
                             break
                     if improved:
@@ -157,9 +214,8 @@ def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[No
         time_history.append(elapsed)
         if cost < best_cost:
             best_cost, best_routes = cost, deepcopy(routes)
-            
+
         remove_empty_route(routes)
-        #pertubate(routes, inst)
 
     best_routes = best_routes if best_routes is not None else routes
     return best_routes, cost_history, time_history

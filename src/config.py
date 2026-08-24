@@ -2,6 +2,7 @@ ITERATIONS: int
 RUNS: int 
 STATIONS: int
 MAX_LOCAL_IMPROVEMENTS: int = 20
+EJECT_K: int = 3
 
 #Simulated Annealing
 SA_COOLING_RATE = 0.9
