@@ -9,8 +9,10 @@ from src import config
 
 from src.localSearch import (
     best_move,
+    eject_costly_customers,
     remove_empty_route,
     local_search,
+    solo_route,
 )
 
 from src.feasibility import is_feasible
@@ -97,7 +99,7 @@ class TestLocalSearch(unittest.TestCase):
 
         route = [self.depot, self.customer2, self.customer1, self.depot]
 
-        result = best_move(route, self.customer1, inst, len(route), ci=2)
+        result = best_move(route, self.customer1, inst, ci=2)
 
         self.assertIsNotNone(result)
 
@@ -107,7 +109,7 @@ class TestLocalSearch(unittest.TestCase):
 
         route = [self.depot, self.customer2, self.customer1, self.depot]
 
-        result = best_move(route, self.customer1, inst, len(route), ci=2)
+        result = best_move(route, self.customer1, inst, ci=2)
 
         is_feasible(inst, result)
 
@@ -149,6 +151,31 @@ class TestLocalSearch(unittest.TestCase):
         new_cost = sum(route_cost(route) for route in result)
 
         self.assertLessEqual(new_cost, old_cost)
+
+    def test_solo_route_serves_customer_alone(self):
+
+        inst = self.create_instance()
+
+        route = solo_route(self.customer1, inst)
+
+        if route is None:
+            self.fail("solo_route returned None")
+
+        self.assertIn(self.customer1, route)
+
+        is_feasible(inst, route)
+
+    def test_eject_gated_by_savings(self):
+
+        inst = self.create_instance()
+
+        routes = [[self.depot, self.customer1, self.depot]]
+
+        ejected = eject_costly_customers(routes, inst, config.EJECT_K)
+
+        self.assertFalse(ejected)
+
+        self.assertEqual(len(routes), 1)
 
 
 if __name__ == "__main__":
