@@ -14,6 +14,7 @@ from src.instances import get_instances
 from src.localSearch import local_search
 from src.solutionConstructor import greedy_construction
 from src.simulatedAnnealing import simulated_annealing
+from src.vns import vns
 
 
 @click.command()
@@ -84,6 +85,10 @@ def Task1(iter: int, run: int, station: int):
                 best_sa_routes = deepcopy(sa_routes)
         export_to_txt(best_sa_routes, f"{instance_name}_sa", best_sa_cost)
 
+        #VNS
+        vns_routes, vns_cost, vns_time = vns(deepcopy(ls_routes), inst)
+        export_to_txt(vns_routes, f"{instance_name}_vns", vns_cost)
+
         for i, (c, t) in enumerate(zip(greedy_costs, greedy_times)):
             run_data.append({
                 "instance": instance_name,
@@ -102,12 +107,7 @@ def Task1(iter: int, run: int, station: int):
                 "time": t,
             })
 
-        for i, (c, t) in enumerate(
-            zip( 
-                sa_costs, 
-                sa_times 
-            )       
-        ): 
+        for i, (c, t) in enumerate( zip( sa_costs, sa_times )): 
             run_data.append({ 
                 "instance": instance_name, 
                 "algorithm": "sa", 
@@ -115,7 +115,16 @@ def Task1(iter: int, run: int, station: int):
                 "cost": c, 
                 "time": t, 
             })
-             
+
+        run_data.append({
+            "instance": instance_name,
+            "algorithm": "vns",
+            "run": 0,
+            "cost": vns_cost,
+            "time": vns_time,
+        })
+        break
+        
     export_to_csv(run_data, "algo_run_data")
     export_summary_csv ()
 

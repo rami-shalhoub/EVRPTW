@@ -187,3 +187,23 @@ def shuffle(customers: list[Node], inst: Instance):
         case 4:
             customers = sweep_sort(customers, inst)
             customers[:] = order_customers_by_distance(customers)
+
+#========================================================================
+#===                           VNS Helper                             ===
+#========================================================================
+def customer_positions(routes):
+    """Return list of (route_idx, node_idx) for every customer in the solution."""
+    positions = []
+    for ri, route in enumerate(routes):
+        for ni, node in enumerate(route):
+            if node.type == "c":
+                positions.append((ri, ni))
+    return positions
+
+def route_customers(routes, ri):
+    """Return indices of customers within a single route."""
+    return [ni for ni, node in enumerate(routes[ri]) if node.type == "c"]
+
+def route_load(route):
+    """Sum of customer demands in a route."""
+    return sum(n.demand for n in route if n.type == "c")
