@@ -119,23 +119,16 @@ def random_2opt(
     candidate_route[i:j + 1] = reversed(
         candidate_route[i:j + 1]
     )
-
-    try:
-        is_feasible(
-            inst,
-            candidate_route
-        )
-    except InfeasibilityError:
+    neighbour [r_idx] = candidate_route
+    #now we check the complete solution
+    if not is_solution_feasible (neighbour, inst):
         return routes
-
-    neighbour[r_idx] = candidate_route
 
     return neighbour        
 
 def random_neighbour(
         routes: list[list[Node]],
-        inst: Instance,
-        iteration: int
+        inst: Instance
 ): 
     move = random.choice([
         random_customer_swap,
@@ -180,13 +173,13 @@ def random_station_relocate(
         candidate_route = route[:]
         candidate_route[n_idx] = station
     
-        try:
-            is_feasible(inst,candidate_route)
-        except InfeasibilityError:
-           continue
-
         neighbour[r_idx] = candidate_route
-        return neighbour     
+
+        if not is_solution_feasible(neighbour, inst):
+            continue
+
+        return neighbour
+         
     return routes     
 
 def has_all_customers(
@@ -274,8 +267,7 @@ def calculate_initial_temperature(
     inst: Instance
 ):
     
-    # Determine T0 based on the cost differences of random worsening neighbours.
-    # We choose T0 so that a typical worsening move has an acceptance probability of approximately 80%.
+    # We need to determine T0 based on the cost differences of random worsening neighbours.
 
     current_cost = total_cost(
         initial_routes
@@ -290,11 +282,16 @@ def calculate_initial_temperature(
     ):
 
 
-        neighbour_routes = (
-            random_customer_relocate(
-                initial_routes,
-                inst
-            )
+        move = random.choice([
+            random_customer_swap,
+            random_2opt,
+            random_customer_relocate,
+            random_station_relocate
+        ])
+
+        neighbour_routes = move (
+            initial_routes,
+            inst
         )
 
         neighbour_cost = total_cost(
@@ -341,6 +338,21 @@ def calculate_initial_temperature(
     print("Positivie deltas:", deltas)
     print("Median delta:", median_delta)
     print("Initial temperature:", T0)
+
+    print("\nAcceptance probabilities")
+
+    for factor in [1.0, 0.5, 0.1, 0.01, 0.001]:
+        T= T0 * factor
+
+        if T > 0:
+            p=math.exp(-median_delta / T)
+        else:
+            p = 0.0
+        print(
+            f"T = {T:.6f}"
+            f"({factor:.3f}* T0)"
+            f"-> P = {p:.4f}"
+        )        
 
     return T0
 
@@ -397,10 +409,9 @@ def simulated_annealing(
     # 4. while stopping criterion not reached
 
     while (
-        temperature
-        > config.SA_MIN_TEMPERATURE and no_improvement_stages < config.SA_MAX_NO_IMPROVEMENT_STAGES
+        no_improvement_stages < config.SA_MAX_NO_IMPROVEMENT_STAGES
     ):
-        print(f"Temperature: {temperature:.2f}, best cost: {best_cost:.2f}")
+        print(f"Temperature: {temperature:.15f}, best cost: {best_cost:.2f}")
 
         best_cost_before_stage = best_cost
 
@@ -415,8 +426,7 @@ def simulated_annealing(
 
             neighbour_solution = random_neighbour(
                 current_solution,
-                inst,
-                iteration
+                inst
             )
 
             # feasibility checks
