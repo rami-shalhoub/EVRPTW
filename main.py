@@ -86,7 +86,7 @@ def Task1(iter: int, run: int, station: int):
         export_to_txt(best_sa_routes, f"{instance_name}_sa", best_sa_cost)
 
         #VNS
-        vns_routes, vns_cost, vns_time = vns(deepcopy(ls_routes), inst)
+        vns_routes, vns_cost, vns_time = vns(deepcopy(greedy_routes), inst)
         export_to_txt(vns_routes, f"{instance_name}_vns", vns_cost)
 
         for i, (c, t) in enumerate(zip(greedy_costs, greedy_times)):
