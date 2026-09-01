@@ -32,7 +32,7 @@ def _fig_to_png_bytes(fig, width=1200, height=800):
     buf = BytesIO()
     fig.write_image(buf, format="png", scale=2, width=width, height=height)
     buf.seek(0)
-    return buf
+    return buf.getvalue()
 
 
 def best_worst_avg(s):
