@@ -10,24 +10,6 @@ from .solutionConstructor import last_resort, route_constructor
 from .helpers import total_cost, shuffle
 from .instances import Instance, Node
 
-def get_customer_order(
-    routes: list[list[Node]]
-):
-    # We extract the customer order from a solution.
-    #Depots and charging stations are ignored.
-
-    customer_order = []
-
-    for route in routes:
-
-        for node in route:
-
-            if node.type == "c":
-
-                customer_order.append(node)
-
-    return customer_order
-
 def random_customer_swap(
     routes: list[Node],
     inst: Instance
@@ -335,11 +317,11 @@ def calculate_initial_temperature(
             config.SA_TARGET_ACCEPTANCE
         )
     )
-    print("Positivie deltas:", deltas)
-    print("Median delta:", median_delta)
-    print("Initial temperature:", T0)
+    # print("Positivie deltas:", deltas)
+    # print("Median delta:", median_delta)
+    # print("Initial temperature:", T0)
 
-    print("\nAcceptance probabilities")
+    # print("\nAcceptance probabilities")
 
     for factor in [1.0, 0.5, 0.1, 0.01, 0.001]:
         T= T0 * factor
@@ -348,11 +330,11 @@ def calculate_initial_temperature(
             p=math.exp(-median_delta / T)
         else:
             p = 0.0
-        print(
-            f"T = {T:.6f}"
-            f"({factor:.3f}* T0)"
-            f"-> P = {p:.4f}"
-        )        
+        # print(
+        #     f"T = {T:.6f}"
+        #     f"({factor:.3f}* T0)"
+        #     f"-> P = {p:.4f}"
+        # )        
 
     return T0
 
@@ -374,7 +356,7 @@ def simulated_annealing(
         initial_routes,
         inst
     )
-    print(f"Initial temperature: {temperature:.2f}")
+    # print(f"Initial temperature: {temperature:.2f}")
 
     # 2. x <- buildSolution()
     # The solution comes from our construction heuristic.
@@ -411,7 +393,7 @@ def simulated_annealing(
     while (
         no_improvement_stages < config.SA_MAX_NO_IMPROVEMENT_STAGES
     ):
-        print(f"Temperature: {temperature:.15f}, best cost: {best_cost:.2f}")
+        # print(f"Temperature: {temperature:.15f}, best cost: {best_cost:.2f}")
 
         best_cost_before_stage = best_cost
 
@@ -473,7 +455,7 @@ def simulated_annealing(
 
             if current_cost < best_cost:
 
-                print(f"New best solution found: {best_cost:.2f} -> {current_cost:.2f}")
+                # print(f"New best solution found: {best_cost:.2f} -> {current_cost:.2f}")
 
                  # 8. x* <- x
 
@@ -514,16 +496,28 @@ def simulated_annealing(
         - start
     )
 
-    print(
-        f"SA statistics:"
-        f"accepted moves: {accepted_moves}, "
-        f"rejected moves: {rejected_moves}, "
-        f"infeasible moves: {infeasible_moves}, "
-        f"improving moves: {improving_moves}"
-    )
+    # print(
+    #     f"SA statistics:"
+    #     f"accepted moves: {accepted_moves}, "
+    #     f"rejected moves: {rejected_moves}, "
+    #     f"infeasible moves: {infeasible_moves}, "
+    #     f"improving moves: {improving_moves}"
+    # )
+
+    convergence = {
+        "cost_history": cost_history,
+        "best_cost_history": best_cost_history,
+        "temperature_history": temperature_history,
+        "accepted_moves": accepted_moves,
+        "rejected_moves": rejected_moves,
+        "infeasible_moves": infeasible_moves,
+        "improving_moves": improving_moves,
+        "initial_temperature": temperature_history[0] if temperature_history else 0.0,
+        "stages_completed": iteration // config.SA_ITERATIONS_PER_TEMPERATURE,
+    }
 
     return (
         best_solution,
-        cost_history,
+        convergence,
         elapsed_time
     )

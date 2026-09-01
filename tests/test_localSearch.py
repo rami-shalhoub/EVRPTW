@@ -119,7 +119,7 @@ class TestLocalSearch(unittest.TestCase):
 
         routes = [[self.depot, self.customer2, self.customer1, self.depot]]
 
-        result, costs, times = local_search(routes, inst)
+        result, costs, times, _meta, _conv = local_search(routes, inst)
 
         self.assertIsNotNone(result)
 
@@ -133,7 +133,7 @@ class TestLocalSearch(unittest.TestCase):
 
         routes = [[self.depot, self.customer1, self.customer2, self.depot]]
 
-        result, _, _ = local_search(routes, inst)
+        result, _, _, _, _ = local_search(routes, inst)
 
         for route in result:
             is_feasible(inst, route)
@@ -146,7 +146,7 @@ class TestLocalSearch(unittest.TestCase):
 
         old_cost = sum(route_cost(route) for route in routes)
 
-        result, _, _ = local_search(routes, inst)
+        result, _, _, _, _ = local_search(routes, inst)
 
         new_cost = sum(route_cost(route) for route in result)
 

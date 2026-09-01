@@ -218,7 +218,7 @@ def simulated_annealing_ext(
     # 1. T <- T0
     T0 = calculate_initial_temperature(initial_routes, inst)
     temperature = T0
-    print(f"Initial temperature: {temperature:.2f}")
+    # print(f"Initial temperature: {temperature:.2f}")
 
     # 2. x <- buildSolution()
     current_solution = deepcopy(initial_routes)
@@ -238,6 +238,7 @@ def simulated_annealing_ext(
     iteration = 0
     no_improvement_stages = 0
     reannealing_rounds = 0
+    intensification_count = 0
     stage_count = 0
     accepted_moves = 0
     rejected_moves = 0
@@ -246,7 +247,7 @@ def simulated_annealing_ext(
     # 4. while stopping criterion not reached
     while (no_improvement_stages < config.SA_MAX_NO_IMPROVEMENT_STAGES
            and (time.perf_counter() - start) < config.SA_MAX_TIME):
-        print(f"Temperature: {temperature:.15f}, best cost: {best_cost:.2f}")
+        # print(f"Temperature: {temperature:.15f}, best cost: {best_cost:.2f}")
 
         best_cost_before_stage = best_cost
         stage_accepted = 0
@@ -292,7 +293,7 @@ def simulated_annealing_ext(
 
             # 7. if z(x) < z(x*)
             if current_cost < best_cost:
-                print(f"New best solution found: {best_cost:.2f} -> {current_cost:.2f}")
+                # print(f"New best solution found: {best_cost:.2f} -> {current_cost:.2f}")
                 best_solution = deepcopy(current_solution)
                 best_cost = current_cost
 
@@ -304,11 +305,12 @@ def simulated_annealing_ext(
 
         # Enhancement 3: Periodic intensification via local search
         if stage_count % config.SA_INTENSIFICATION_INTERVAL == 0:
-            print(f"  Intensification: running local search on best solution ({best_cost:.2f})")
-            ls_routes, _, _ = local_search(deepcopy(best_solution), inst)
+            # print(f"  Intensification: running local search on best solution ({best_cost:.2f})")
+            intensification_count += 1
+            ls_routes, _, _, _, _ = local_search(deepcopy(best_solution), inst)
             ls_cost = total_cost(ls_routes)
             if ls_cost < best_cost:
-                print(f"  Local search improved: {best_cost:.2f} -> {ls_cost:.2f}")
+                # print(f"  Local search improved: {best_cost:.2f} -> {ls_cost:.2f}")
                 best_solution = ls_routes
                 best_cost = ls_cost
                 current_solution = deepcopy(ls_routes)
@@ -323,8 +325,8 @@ def simulated_annealing_ext(
         # Enhancement 4: Reannealing
         if no_improvement_stages >= config.SA_MAX_NO_IMPROVEMENT_STAGES:
             if reannealing_rounds < config.SA_REANNEALING_ROUNDS:
-                print(f"  Reannealing round {reannealing_rounds + 1}: "
-                      f"T {temperature:.4f} -> {T0 * config.SA_REANNEALING_TEMP_FRACTION:.4f}")
+                # print(f"  Reannealing round {reannealing_rounds + 1}: "
+                #       f"T {temperature:.4f} -> {T0 * config.SA_REANNEALING_TEMP_FRACTION:.4f}")
                 temperature = T0 * config.SA_REANNEALING_TEMP_FRACTION
                 current_solution = deepcopy(best_solution)
                 current_cost = best_cost
@@ -338,10 +340,25 @@ def simulated_annealing_ext(
 
     elapsed_time = time.perf_counter() - start
 
-    print(f"\nSA statistics: accepted={accepted_moves}, rejected={rejected_moves}, "
-          f"infeasible={infeasible_moves}")
-    print(f"Move stats: {move_stats}")
-    print(f"Weights: {weights}")
-    print(f"Reannealing rounds used: {reannealing_rounds}")
+    # print(f"\nSA statistics: accepted={accepted_moves}, rejected={rejected_moves}, "
+    #       f"infeasible={infeasible_moves}")
+    # print(f"Move stats: {move_stats}")
+    # print(f"Weights: {weights}")
+    # print(f"Reannealing rounds used: {reannealing_rounds}")
 
-    return best_solution, cost_history, elapsed_time
+    convergence = {
+        "cost_history": cost_history,
+        "best_cost_history": best_cost_history,
+        "temperature_history": temperature_history,
+        "accepted_moves": accepted_moves,
+        "rejected_moves": rejected_moves,
+        "infeasible_moves": infeasible_moves,
+        "initial_temperature": temperature_history[0] if temperature_history else 0.0,
+        "stages_completed": stage_count,
+        "move_stats": move_stats,
+        "final_weights": weights,
+        "reannealing_rounds": reannealing_rounds,
+        "intensification_count": intensification_count,
+    }
+
+    return best_solution, convergence, elapsed_time

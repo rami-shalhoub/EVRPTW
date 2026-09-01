@@ -156,13 +156,17 @@ def greedy_construction(inst: Instance):
     best_cost:float = float("inf")
     cost_history: list[float] =[]
     time_history: list[float] =[]
+    convergence_data: list[list[dict]] = []
     for mode in (1, 2, 3):
         start = time.perf_counter()
         routes: list[list[Node]] = list()
         failed_customers: list[Node] = list()
         unvisited:list[Node] = sweep_sort(inst.customers[:], inst)
         i = config.ITERATIONS
+        mode_convergence: list[dict] = []
+        iteration = 0
         while len(unvisited) != 0:
+            iteration += 1
             route = route_constructor(unvisited, inst, mode)
             served = [r for r in route if r.type == 'c']
             #------------------------------------------
@@ -178,6 +182,17 @@ def greedy_construction(inst: Instance):
             else:
                 routes.append(route)
             shuffle(unvisited, inst)
+
+            customers_served = sum(1 for r in routes for n in r if n.type == 'c')
+            mode_convergence.append({
+                "iteration": iteration,
+                "cost": total_cost(routes) if routes else 0.0,
+                "routes_count": len(routes),
+                "customers_served": customers_served,
+                "unvisited_count": len(unvisited),
+                "failed_count": len(failed_customers),
+            })
+
             #--------------------------------------------------------------
             #INFO               Failed customers iterations                         
             # * after going through the whole unvisited customers, if any 
@@ -198,7 +213,8 @@ def greedy_construction(inst: Instance):
         elapsed = time.perf_counter() - start
         cost_history.append(cost)
         time_history.append(elapsed)
+        convergence_data.append(mode_convergence)
         if cost < best_cost:
             best_cost, best_routes = cost, deepcopy(routes)
     
-    return best_routes, cost_history, time_history
+    return best_routes, cost_history, time_history, convergence_data

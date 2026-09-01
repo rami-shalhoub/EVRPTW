@@ -206,7 +206,7 @@ def vns(routes: list[list[Node]], inst: Instance):
             k = (k % config.VNS_K_MAX) + 1
             continue
 
-        x_ls, _, _ = local_search(x_prime, inst)
+        x_ls, _, _, _, _ = local_search(x_prime, inst)
         cost_new = total_cost(x_ls)
 
         if cost_new < best_cost:

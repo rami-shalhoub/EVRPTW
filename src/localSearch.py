@@ -89,15 +89,16 @@ def solo_route(customer: Node, inst: Instance) -> list[Node] | None:
     return None
 
 
-def eject_costly_customers(routes: list[list[Node]], inst: Instance, k: int) -> bool:
+def eject_costly_customers(routes: list[list[Node]], inst: Instance, k: int) -> int:
     """
     Move the top-k most costly customers into their own solo routes \n
     - a customer is costly when removing it shrinks its route's cost (removal savings)
     - the split only happens when the solo route costs less than the savings,
       i.e. the move is strictly net-positive
+    - returns the number of customers actually ejected
     """
     if k <= 0:
-        return False
+        return 0
 
     savings: list[tuple[float, int, Node]] = []
     for ri, route in enumerate(routes):
@@ -110,7 +111,7 @@ def eject_costly_customers(routes: list[list[Node]], inst: Instance, k: int) -> 
                 savings.append((gain, ri, node))
     savings.sort(key=lambda s: s[0], reverse=True)
 
-    ejected = False
+    ejected = 0
     for _, ri, node in savings[:k]:
         route = routes[ri]
         idx = next((p for p, x in enumerate(route) if x is node), None)
@@ -124,7 +125,7 @@ def eject_costly_customers(routes: list[list[Node]], inst: Instance, k: int) -> 
             continue
         routes[ri] = rest
         routes.append(solo)
-        ejected = True
+        ejected += 1
     return ejected
 
 
@@ -134,22 +135,26 @@ def remove_empty_route(routes: list[list[Node]]):
             routes.remove(route)
 
 
-def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[Node]], list[float], list[float]]:
+def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[Node]], list[float], list[float], list[dict], list[list[dict]]]:
     best_routes = None
     best_cost = float("inf")
     cost_history: list[float] = []
     time_history: list[float] = []
+    run_metadata: list[dict] = []
+    convergence_data: list[list[dict]] = []
     for run in range(config.RUNS):
         start = time.perf_counter()
+        ejected_count = 0
         # diversify between chunks: split off the costliest customers (run 0 untouched)
         if run > 0:
-            eject_costly_customers(routes, inst, config.EJECT_K)
+            ejected_count = eject_costly_customers(routes, inst, config.EJECT_K)
 
         # memoized best_move results; keys embed the target route's content,
         # so stale entries become unreachable as soon as the route changes
         cache: dict[tuple, list[Node] | None] = {}
         improved = True
         improvements = 0
+        run_conv: list[dict] = []
         while improved and improvements < config.MAX_LOCAL_IMPROVEMENTS:
             remove_empty_route(routes)
             improved = False
@@ -208,14 +213,29 @@ def local_search(routes: list[list[Node]], inst: Instance) -> tuple[list[list[No
                 if improved:
                     break
 
+            routes_count = len(routes)
+            customers_served = sum(1 for r in routes for n in r if n.type == "c")
+            run_conv.append({
+                "iteration": improvements,
+                "cost": total_cost(routes),
+                "routes_count": routes_count,
+                "customers_served": customers_served,
+            })
+
         cost = total_cost(routes)
         elapsed = time.perf_counter() - start
         cost_history.append(cost)
         time_history.append(elapsed)
+        run_metadata.append({
+            "improvements_made": improvements,
+            "ejected_customers": ejected_count,
+            "converged": improvements >= config.MAX_LOCAL_IMPROVEMENTS,
+        })
+        convergence_data.append(run_conv)
         if cost < best_cost:
             best_cost, best_routes = cost, deepcopy(routes)
 
         remove_empty_route(routes)
 
     best_routes = best_routes if best_routes is not None else routes
-    return best_routes, cost_history, time_history
+    return best_routes, cost_history, time_history, run_metadata, convergence_data
