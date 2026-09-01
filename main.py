@@ -14,6 +14,7 @@ from src.instances import get_instances
 from src.localSearch import local_search
 from src.solutionConstructor import greedy_construction
 from src.simulatedAnnealing import simulated_annealing
+from src.sa_extended import simulated_annealing_ext
 from src.vns import vns
 
 
@@ -55,7 +56,7 @@ def Task1(iter: int, run: int, station: int):
         inst = get_instances(path)
         instance_name = file.replace(".txt", "")
 
-        print(f"\n{instance_name} – running greedy + local search + simulated annealing")
+        print(f"\n{instance_name} – running greedy + local search + simulated annealing + simulated annealing extended")
 
         #Greedy construction
         greedy_routes, greedy_costs, greedy_times = greedy_construction(inst)
@@ -68,6 +69,7 @@ def Task1(iter: int, run: int, station: int):
         export_to_txt(ls_routes, f"{instance_name}_ls", ls_cost)
 
         #Simulated annealing
+        print("simulated annealing:")
         sa_costs = []
         sa_times = []
 
@@ -76,7 +78,7 @@ def Task1(iter: int, run: int, station: int):
 
         for run_idx in range (config.RUNS):
             seed = config.SA_RANDOM_SEED + run_idx
-            sa_routes,_, sa_time = simulated_annealing(inst, deepcopy(greedy_routes), seed=seed)
+            sa_routes,_, sa_time = simulated_annealing(inst, deepcopy(ls_routes), seed=seed)
             sa_cost = total_cost(sa_routes)
             sa_costs.append(sa_cost)
             sa_times.append(sa_time)
@@ -85,9 +87,30 @@ def Task1(iter: int, run: int, station: int):
                 best_sa_routes = deepcopy(sa_routes)
         export_to_txt(best_sa_routes, f"{instance_name}_sa", best_sa_cost)
 
+        #Enhanced Simulated Annealing (Task 3)
+        print("simulated annealing extended:")
+        sa_ext_costs = []
+        sa_ext_times = []
+
+        best_sa_ext_cost = float("inf")
+        best_sa_ext_routes = None
+
+        for run_idx in range(config.RUNS):
+            seed = config.SA_RANDOM_SEED + run_idx
+            sa_ext_routes, _, sa_ext_time = simulated_annealing_ext(
+                inst, ls_routes, seed=seed
+            )
+            sa_ext_cost = total_cost(sa_ext_routes)
+            sa_ext_costs.append(sa_ext_cost)
+            sa_ext_times.append(sa_ext_time)
+            if sa_ext_cost < best_sa_ext_cost:
+                best_sa_ext_cost = sa_ext_cost
+                best_sa_ext_routes = deepcopy(sa_ext_routes)
+        export_to_txt(best_sa_ext_routes, f"{instance_name}_sa_ext", best_sa_ext_cost)
+        
         #VNS
-        vns_routes, vns_cost, vns_time = vns(deepcopy(greedy_routes), inst)
-        export_to_txt(vns_routes, f"{instance_name}_vns", vns_cost)
+        # vns_routes, vns_cost, vns_time = vns(deepcopy(greedy_routes), inst)
+        # export_to_txt(vns_routes, f"{instance_name}_vns", vns_cost)
 
         for i, (c, t) in enumerate(zip(greedy_costs, greedy_times)):
             run_data.append({
@@ -116,15 +139,22 @@ def Task1(iter: int, run: int, station: int):
                 "time": t, 
             })
 
-        run_data.append({
-            "instance": instance_name,
-            "algorithm": "vns",
-            "run": 0,
-            "cost": vns_cost,
-            "time": vns_time,
-        })
-        break
-        
+        for i, (c, t) in enumerate(zip(sa_ext_costs, sa_ext_times)):
+            run_data.append({
+                "instance": instance_name,
+                "algorithm": "sa_ext",
+                "run": i,
+                "cost": c,
+                "time": t,
+            })
+
+        # run_data.append({
+        #     "instance": instance_name,
+        #     "algorithm": "vns",
+        #     "run": 0,
+        #     "cost": vns_cost,
+        #     "time": vns_time,
+        # })        
     export_to_csv(run_data, "algo_run_data")
     export_summary_csv ()
 

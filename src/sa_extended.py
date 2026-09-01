@@ -10,139 +10,21 @@ import random
 import time
 from copy import deepcopy
 
-from .feasibility import InfeasibilityError, is_feasible
 from src import config
-from .solutionConstructor import last_resort, route_constructor
-from .helpers import customer_positions, route_customers, route_load, route_cost, total_cost, shuffle
+
+from .helpers import customer_positions, route_customers, route_load, total_cost
 from .instances import Instance, Node
 from .localSearch import local_search, remove_empty_route
-
-
-# ========================================================================
-#  Utility functions (same as simulatedAnnealing.py)
-# ========================================================================
-
-def has_all_customers(routes: list[list[Node]], inst: Instance):
-    expected = {c.id for c in inst.customers}
-    served = [c.id for r in routes for c in r if c.type == "c"]
-    served_set = set(served)
-    if expected != served_set:
-        return False
-    if len(served) != len(served_set):
-        return False
-    return True
-
-
-def is_solution_feasible(routes: list[list[Node]], inst: Instance):
-    try:
-        for route in routes:
-            is_feasible(inst, route)
-    except InfeasibilityError:
-        return False
-    return True
-
-
-def accept(
-    current_cost: float,
-    candidate_cost: float,
-    temperature: float
-):
-    if candidate_cost < current_cost:
-        return True
-    if temperature <= 0:
-        return False
-    delta = candidate_cost - current_cost
-    probability = math.exp(-delta / temperature)
-    return random.random() < probability
-
-
-# ========================================================================
-#  Neighborhood functions (original 4 from Task 2)
-# ========================================================================
-
-def random_customer_swap(routes: list[list[Node]], inst: Instance):
-    neighbour = deepcopy(routes)
-    customer_positions_list = []
-    for r_idx, route in enumerate(neighbour):
-        for n_idx, node in enumerate(route):
-            if node.type == "c":
-                customer_positions_list.append((r_idx, n_idx))
-    if len(customer_positions_list) < 2:
-        return neighbour
-    (r1, p1), (r2, p2) = random.sample(customer_positions_list, 2)
-    neighbour[r1][p1], neighbour[r2][p2] = neighbour[r2][p2], neighbour[r1][p1]
-    return neighbour
-
-
-def random_customer_relocate(routes: list[list[Node]], inst: Instance):
-    neighbour = deepcopy(routes)
-    customer_positions_list = []
-    for r_idx, route in enumerate(neighbour):
-        for n_idx, node in enumerate(route):
-            if node.type == "c":
-                customer_positions_list.append((r_idx, n_idx))
-    if len(customer_positions_list) < 2:
-        return neighbour
-    r1, p1 = random.choice(customer_positions_list)
-    possible_targets = [
-        (r, p) for r, p in customer_positions_list if (r, p) != (r1, p1)
-    ]
-    r2, p2 = random.choice(possible_targets)
-    customer = neighbour[r1].pop(p1)
-    if r1 == r2 and p2 > p1:
-        p2 -= 1
-    neighbour[r2].insert(p2, customer)
-    return neighbour
-
-
-def random_2opt(routes: list[list[Node]], inst: Instance):
-    neighbour = deepcopy(routes)
-    candidate_routes = []
-    for r_idx, route in enumerate(neighbour):
-        cust_pos = [i for i, node in enumerate(route) if node.type == "c"]
-        if len(cust_pos) >= 2:
-            candidate_routes.append(r_idx)
-    if not candidate_routes:
-        return neighbour
-    r_idx = random.choice(candidate_routes)
-    route = neighbour[r_idx]
-    cust_pos = [i for i, node in enumerate(route) if node.type == "c"]
-    i, j = sorted(random.sample(cust_pos, 2))
-    if i == j:
-        return neighbour
-    candidate_route = route[:]
-    candidate_route[i:j + 1] = reversed(candidate_route[i:j + 1])
-    neighbour[r_idx] = candidate_route
-    if not is_solution_feasible(neighbour, inst):
-        return routes
-    return neighbour
-
-
-def random_station_relocate(routes: list[list[Node]], inst: Instance):
-    neighbour = deepcopy(routes)
-    station_positions = []
-    for r_idx, route in enumerate(neighbour):
-        for n_idx, node in enumerate(route):
-            if node.type == "f":
-                station_positions.append((r_idx, n_idx))
-    if not station_positions:
-        return routes
-    r_idx, n_idx = random.choice(station_positions)
-    route = neighbour[r_idx]
-    if n_idx == 0 or n_idx == len(route) - 1:
-        return neighbour
-    old_station = route[n_idx]
-    candidate_stations = [s for s in inst.stations if s.id != old_station.id]
-    random.shuffle(candidate_stations)
-    for station in candidate_stations:
-        candidate_route = route[:]
-        candidate_route[n_idx] = station
-        neighbour[r_idx] = candidate_route
-        if not is_solution_feasible(neighbour, inst):
-            continue
-        return neighbour
-    return routes
-
+from .simulatedAnnealing import (
+    accept,
+    calculate_initial_temperature,
+    has_all_customers,
+    is_solution_feasible,
+    random_2opt,
+    random_customer_relocate,
+    random_customer_swap,
+    random_station_relocate,
+)
 
 # ========================================================================
 #  NEW Neighborhoods for Task 3 (adapted from vns.py)
@@ -295,30 +177,6 @@ def update_weights(weights: dict, move_name: str, accepted: bool, improved: bool
 # ========================================================================
 #  Temperature functions
 # ========================================================================
-
-def calculate_initial_temperature(initial_routes: list[list[Node]], inst: Instance):
-    current_cost = total_cost(initial_routes)
-    deltas = []
-
-    for _ in range(config.SA_TEMPERATURE_SAMPLES):
-        move_fn = random.choice(ALL_MOVES)
-        neighbour_routes = move_fn(initial_routes, inst)
-        if neighbour_routes is None:
-            continue
-        neighbour_cost = total_cost(neighbour_routes)
-        delta = neighbour_cost - current_cost
-        if delta > 0:
-            deltas.append(delta)
-
-    if len(deltas) == 0:
-        return max(current_cost * 0.1, 1.0)
-
-    deltas.sort()
-    median_delta = deltas[len(deltas) // 2]
-    T0 = -median_delta / math.log(config.SA_TARGET_ACCEPTANCE)
-    print("Initial temperature:", T0)
-    return T0
-
 
 def adaptive_update_temperature(temperature: float, acceptance_rate: float):
     """Adjust cooling rate based on acceptance rate."""
